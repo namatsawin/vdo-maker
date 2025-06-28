@@ -19,7 +19,7 @@ interface AuthState {
 interface AuthActions {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
   checkAuth: () => boolean;
@@ -95,13 +95,29 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }
       },
 
-      logout: () => {
-        apiClient.logout();
-        set({
-          user: null,
-          isAuthenticated: false,
-          error: null,
-        });
+      logout: async () => {
+        try {
+          // Call API logout endpoint
+          await apiClient.logout();
+        } catch (error) {
+          console.warn('Logout API call failed:', error);
+        } finally {
+          // Always clear auth state regardless of API response
+          set({
+            user: null,
+            isAuthenticated: false,
+            error: null,
+            isLoading: false,
+          });
+
+          // Clear any other persisted data if needed
+          try {
+            // Clear any additional localStorage items if needed
+            localStorage.removeItem('project-store');
+          } catch (error) {
+            console.warn('Failed to clear additional storage:', error);
+          }
+        }
       },
 
       clearError: () => set({ error: null }),

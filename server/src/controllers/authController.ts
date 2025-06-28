@@ -109,6 +109,35 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // In a JWT-based system, logout is typically handled client-side
+    // by removing the token. However, we can log the logout event
+    // and potentially blacklist the token if needed.
+    
+    const userId = (req as any).user?.id;
+    
+    if (userId) {
+      // Log the logout event (optional)
+      console.log(`User ${userId} logged out at ${new Date().toISOString()}`);
+      
+      // Here you could implement token blacklisting if needed
+      // For now, we'll just return a success response
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        message: 'Logged out successfully'
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;

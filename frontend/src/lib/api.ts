@@ -137,8 +137,21 @@ class ApiClient {
     return response;
   }
 
-  logout() {
-    this.clearToken();
+  async logout(): Promise<void> {
+    try {
+      // Call the logout endpoint if authenticated
+      if (this.isAuthenticated()) {
+        await this.request('/auth/logout', {
+          method: 'POST'
+        });
+      }
+    } catch (error) {
+      // Even if the API call fails, we should still clear the token
+      console.warn('Logout API call failed:', error);
+    } finally {
+      // Always clear the token regardless of API response
+      this.clearToken();
+    }
   }
 
   isAuthenticated(): boolean {
