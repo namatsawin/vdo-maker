@@ -136,7 +136,7 @@ export function ProjectWorkflow() {
         handleSegmentUpdate(segmentId, {
           script: newScript,
           videoPrompt: newVideoPrompt,
-          approvalStatus: ApprovalStatus.DRAFT,
+          scriptApprovalStatus: ApprovalStatus.DRAFT,
         });
       } else {
         const field = getApprovalField(stage);
@@ -201,7 +201,7 @@ export function ProjectWorkflow() {
     switch (stage) {
       case 'script':
         return project.segments.every(segment => 
-          isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved')
+          isApprovalStatus(segment.scriptApprovalStatus, 'approved')
         );
       case 'images':
         return project.segments.every(segment => 
@@ -308,7 +308,7 @@ export function ProjectWorkflow() {
   const getApprovedCount = () => {
     switch (stage) {
       case 'script':
-        return project?.segments.filter(s => s.approvalStatus === ApprovalStatus.APPROVED).length || 0;
+        return project?.segments.filter(s => s.scriptApprovalStatus === ApprovalStatus.APPROVED).length || 0;
       case 'images':
         return project?.segments.filter(s => s.imageApprovalStatus === ApprovalStatus.APPROVED).length || 0;
       case 'videos':
@@ -340,7 +340,7 @@ export function ProjectWorkflow() {
   const totalCount = project.segments.length;
 
   const completedStages: WorkflowStage[] = [];
-  if (project.segments.every(s => s.approvalStatus === ApprovalStatus.APPROVED)) {
+  if (project.segments.every(s => s.scriptApprovalStatus === ApprovalStatus.APPROVED)) {
     completedStages.push(WorkflowStage.SCRIPT_GENERATION);
   }
   if (project.segments.every(s => s.imageApprovalStatus === ApprovalStatus.APPROVED)) {

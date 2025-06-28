@@ -30,14 +30,14 @@ export function FinalAssembly({ segments, onComplete }: FinalAssemblyProps) {
 
   // Check if all segments are approved
   const allSegmentsApproved = segments.every(segment => 
-    isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved') &&
+    isApprovalStatus(segment.scriptApprovalStatus, 'approved') &&
     isApprovalStatus(segment.imageApprovalStatus, 'approved') &&
     isApprovalStatus(segment.videoApprovalStatus, 'approved') &&
     isApprovalStatus(segment.audioApprovalStatus, 'approved')
   );
 
   const approvedSegments = segments.filter(segment => 
-    isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved') &&
+    isApprovalStatus(segment.scriptApprovalStatus, 'approved') &&
     isApprovalStatus(segment.imageApprovalStatus, 'approved') &&
     isApprovalStatus(segment.videoApprovalStatus, 'approved') &&
     isApprovalStatus(segment.audioApprovalStatus, 'approved')
@@ -162,7 +162,7 @@ export function FinalAssembly({ segments, onComplete }: FinalAssemblyProps) {
           <div className="grid gap-2">
             {segments.map((segment, index) => {
               const isFullyApproved = 
-                isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved') &&
+                isApprovalStatus(segment.scriptApprovalStatus, 'approved') &&
                 isApprovalStatus(segment.imageApprovalStatus, 'approved') &&
                 isApprovalStatus(segment.videoApprovalStatus, 'approved') &&
                 isApprovalStatus(segment.audioApprovalStatus, 'approved');
@@ -187,7 +187,7 @@ export function FinalAssembly({ segments, onComplete }: FinalAssemblyProps) {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className={`px-2 py-1 rounded ${
-                      isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved')
+                      isApprovalStatus(segment.scriptApprovalStatus, 'approved')
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-gray-100 text-gray-600'
                     }`}>

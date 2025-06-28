@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Project, VideoSegment } from '@/types';
+import { ApprovalStatus } from '@/types/shared';
 import { projectService } from '@/services/projectService';
 import { useAIStore } from './aiStore';
 
@@ -168,8 +169,21 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
           order: segment.order || index,
           script: segment.script,
           videoPrompt: segment.videoPrompt,
+          status: ApprovalStatus.DRAFT,
           duration: Math.floor(Math.random() * 20) + 10, // 10-30 seconds
-          approvalStatus: 'draft' as const,
+          
+          // Media assets
+          images: [],
+          videos: [],
+          audios: [],
+          
+          // Individual approval statuses
+          scriptApprovalStatus: ApprovalStatus.DRAFT,
+          imageApprovalStatus: ApprovalStatus.DRAFT,
+          videoApprovalStatus: ApprovalStatus.DRAFT,
+          audioApprovalStatus: ApprovalStatus.DRAFT,
+          finalApprovalStatus: ApprovalStatus.DRAFT,
+          
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }));

@@ -63,13 +63,9 @@ export const enhanceSegmentForCompatibility = (segment: VideoSegment): VideoSegm
   // Calculate duration from media assets if not provided
   const duration = segment.duration || calculateSegmentDuration(segment);
   
-  // Use scriptApprovalStatus as the main approvalStatus for backward compatibility
-  const approvalStatus = segment.approvalStatus || segment.scriptApprovalStatus;
-  
   return {
     ...segment,
     duration,
-    approvalStatus,
     // Ensure all media assets have required fields
     images: segment.images.map(enhanceMediaAssetForCompatibility),
     videos: segment.videos.map(enhanceMediaAssetForCompatibility),
