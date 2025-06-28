@@ -1,0 +1,22 @@
+# Docker Compose Override for Development
+# This file is automatically loaded by docker-compose and provides development-specific settings
+
+services:
+  frontend:
+    # Enable hot reload for development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+
+  backend:
+    # Enable hot reload for development
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - backend-uploads:/app/uploads
+      - backend-db:/app/prisma
+    environment:
+      - NODE_ENV=development

@@ -1,0 +1,56 @@
+# Docker Compose for Production
+version: '3.8'
+
+services:
+  # Frontend Service (Production Build)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:3001/api/v1
+    depends_on:
+      - backend
+    networks:
+      - vdo-maker-network
+
+  # Backend Service (Production)
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.prod
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - API_VERSION=v1
+      - FRONTEND_URL=http://localhost
+      - DATABASE_URL=file:./prod.db
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_CLOUD_PROJECT_ID=${GOOGLE_CLOUD_PROJECT_ID}
+      - PIAPI_API_KEY=${PIAPI_API_KEY}
+      - PIAPI_BASE_URL=https://api.piapi.ai
+      - UPLOAD_DIR=./uploads
+      - MAX_FILE_SIZE=50MB
+      - ALLOWED_FILE_TYPES=mp4,mov,avi,mp3,wav,png,jpg,jpeg
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+    volumes:
+      - backend-uploads:/app/uploads
+      - backend-db:/app/prisma
+    restart: unless-stopped
+    networks:
+      - vdo-maker-network
+
+networks:
+  vdo-maker-network:
+    driver: bridge
+
+volumes:
+  backend-uploads:
+  backend-db:

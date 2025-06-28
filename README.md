@@ -60,25 +60,27 @@ Each stage includes human approval checkpoints to ensure quality control and con
 │   ├── requirements.md      # Detailed requirements
 │   ├── tasks.md            # Development tasks and progress
 │   └── video-generation-api.md # API specifications
-├── src/                    # Frontend source code
-│   ├── components/         # React components
-│   ├── pages/             # Page components
-│   ├── stores/            # Zustand state management
-│   ├── types/             # TypeScript type definitions
-│   └── utils/             # Utility functions
-├── public/                # Static assets
-│   └── mock-assets/       # Sample media files
-└── server/                # Backend code (to be implemented)
+├── frontend/               # Frontend React application
+│   ├── src/               # React source code
+│   ├── public/            # Static assets
+│   └── Dockerfile         # Frontend container
+├── server/                # Backend API server
+│   ├── src/              # Backend source code
+│   ├── prisma/           # Database schema and migrations
+│   └── Dockerfile        # Backend container
+├── docker-compose.yml     # Development environment
+├── docker-compose.prod.yml # Production environment
+└── README.md             # This file
 ```
 
 ## 🚦 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
+- Docker and Docker Compose
+- Node.js 18+ (for local development)
 - Git
 
-### Installation
+### Quick Start with Docker (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -86,32 +88,77 @@ Each stage includes human approval checkpoints to ensure quality control and con
    cd vdo-maker
    ```
 
-2. **Install dependencies**
+2. **Set up environment variables**
    ```bash
-   npm install
-   # or
-   yarn install
+   cp server/.env.example server/.env
+   # Edit server/.env with your API keys
    ```
 
-3. **Start development server**
+3. **Start the application**
    ```bash
-   npm run dev
-   # or
-   yarn dev
+   # Development environment
+   docker-compose up -d
+   
+   # Or for production
+   docker-compose -f docker-compose.prod.yml up -d
    ```
 
-4. **Open in browser**
-   ```
-   http://localhost:5173
-   ```
+4. **Access the application**
+   - Frontend: http://localhost:5173 (dev) or http://localhost (prod)
+   - Backend API: http://localhost:3001
+   - Health Check: http://localhost:3001/health
+
+### Local Development Setup
+
+#### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+#### Backend Setup
+```bash
+cd server
+npm install
+npx prisma migrate dev
+npm run dev
+```
 
 ### Available Scripts
 
+#### Docker Commands
+```bash
+# Start development environment
+docker-compose up -d
+
+# Start production environment
+docker-compose -f docker-compose.prod.yml up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild containers
+docker-compose up --build
+```
+
+#### Frontend Scripts
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript compiler check
+
+#### Backend Scripts
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build TypeScript to JavaScript
+- `npm start` - Start production server
+- `npm run migrate` - Run database migrations
+- `npm run generate` - Generate Prisma client
+- `npm run studio` - Open Prisma Studio
 
 ## 📋 Features
 
@@ -143,6 +190,49 @@ Each stage includes human approval checkpoints to ensure quality control and con
 - **Progress Indicators** - Visual feedback for all operations
 - **Approval Workflows** - Clear status indicators and actions
 - **Responsive Layout** - Optimized for all screen sizes
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Backend (.env)
+```bash
+# Server Configuration
+NODE_ENV=development
+PORT=3001
+API_VERSION=v1
+FRONTEND_URL=http://localhost:5173
+
+# Database
+DATABASE_URL="file:./dev.db"
+
+# JWT Authentication
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=7d
+
+# AI Services
+GEMINI_API_KEY=your-gemini-api-key
+GOOGLE_CLOUD_PROJECT_ID=your-project-id
+PIAPI_API_KEY=your-piapi-key
+
+# File Storage
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=50MB
+ALLOWED_FILE_TYPES=mp4,mov,avi,mp3,wav,png,jpg,jpeg
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+### Docker Environment Variables
+Set these in your shell or .env file for production:
+```bash
+export JWT_SECRET="your-production-jwt-secret"
+export GEMINI_API_KEY="your-gemini-api-key"
+export GOOGLE_CLOUD_PROJECT_ID="your-project-id"
+export PIAPI_API_KEY="your-piapi-key"
+```
 
 ## 📊 Project Metrics & Goals
 
@@ -207,6 +297,15 @@ Each stage includes human approval checkpoints to ensure quality control and con
 - [Task Breakdown](./docs/tasks.md) - Development tasks and progress
 - [API Documentation](./docs/video-generation-api.md) - AI service API specifications
 
+## 🐳 Docker Support
+
+This project includes comprehensive Docker support for both development and production environments:
+
+- **Development**: Hot reload, volume mounting, debug-friendly
+- **Production**: Optimized builds, security hardening, health checks
+- **Multi-stage builds**: Efficient container sizes
+- **Docker Compose**: Orchestrated services with networking
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -228,6 +327,6 @@ For support and questions:
 
 ---
 
-**Status:** MVP Complete ✅ | Backend Integration In Progress 🔄
+**Status:** MVP Complete ✅ | Backend Integration In Progress 🔄 | Docker Ready 🐳
 
 Built with ❤️ for efficient AI-powered video creation
