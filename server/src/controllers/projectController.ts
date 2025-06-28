@@ -193,7 +193,7 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
             script: segment.script,
             videoPrompt: segment.videoPrompt,
             status: 'PENDING',
-            scriptApprovalStatus: 'PENDING',
+            scriptApprovalStatus: 'DRAFT',
             imageApprovalStatus: 'DRAFT',
             videoApprovalStatus: 'DRAFT',
             audioApprovalStatus: 'DRAFT',
@@ -254,7 +254,7 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
   try {
     const userId = req.user?.id;
     const { id } = req.params;
-    const updates: UpdateProjectRequest = req.body;
+    const updates = req.body;
 
     if (!userId) {
       throw createError('User not authenticated', 401);
@@ -269,11 +269,23 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
       throw createError('Project not found', 404);
     }
 
+    // Separate project fields from segments
+    const { segments, ...projectUpdates } = updates;
+
+    // Update project fields only (exclude segments from direct update)
+    const allowedProjectFields = ['title', 'description', 'status', 'currentStage'];
+    const filteredProjectUpdates = Object.keys(projectUpdates)
+      .filter(key => allowedProjectFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = projectUpdates[key];
+        return obj;
+      }, {} as any);
+
     // Update project
     const project = await prisma.project.update({
       where: { id },
       data: {
-        ...updates,
+        ...filteredProjectUpdates,
         updatedAt: new Date()
       },
       include: {
@@ -288,6 +300,61 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
       }
     });
 
+    // Handle segments update separately if provided
+    if (segments && Array.isArray(segments)) {
+      // Update each segment individually
+      for (const segmentUpdate of segments) {
+        if (segmentUpdate.id) {
+          // Update existing segment
+          const allowedSegmentFields = [
+            'script', 'videoPrompt', 'status',
+            'scriptApprovalStatus', 'imageApprovalStatus', 
+            'videoApprovalStatus', 'audioApprovalStatus', 
+            'finalApprovalStatus', 'order'
+          ];
+          
+          const filteredSegmentUpdates = Object.keys(segmentUpdate)
+            .filter(key => allowedSegmentFields.includes(key))
+            .reduce((obj, key) => {
+              obj[key] = segmentUpdate[key];
+              return obj;
+            }, {} as any);
+
+          await prisma.segment.update({
+            where: { id: segmentUpdate.id },
+            data: {
+              ...filteredSegmentUpdates,
+              updatedAt: new Date()
+            }
+          });
+        }
+      }
+
+      // Fetch updated project with segments
+      const updatedProject = await prisma.project.findUnique({
+        where: { id },
+        include: {
+          segments: {
+            include: {
+              images: true,
+              videos: true,
+              audios: true,
+            },
+            orderBy: { order: 'asc' }
+          }
+        }
+      });
+
+      if (updatedProject) {
+        const mappedProject = mapProject(updatedProject);
+        res.json({
+          success: true,
+          data: { project: mappedProject }
+        });
+        return;
+      }
+    }
+
     // Map to frontend type
     const mappedProject = mapProject(project);
 
@@ -300,6 +367,67 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
     res.status(500).json({
       success: false,
       error: { message: 'Failed to update project' }
+    });
+  }
+};
+
+// Update segment
+export const updateSegment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const { projectId, segmentId } = req.params;
+    const updates: UpdateSegmentRequest = req.body;
+
+    if (!userId) {
+      throw createError('User not authenticated', 401);
+    }
+
+    // Verify project ownership
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId }
+    });
+
+    if (!project) {
+      throw createError('Project not found', 404);
+    }
+
+    // Verify segment belongs to project
+    const existingSegment = await prisma.segment.findFirst({
+      where: { id: segmentId, projectId }
+    });
+
+    if (!existingSegment) {
+      throw createError('Segment not found', 404);
+    }
+
+    // Update segment
+    const segment = await prisma.segment.update({
+      where: { id: segmentId },
+      data: {
+        ...updates,
+        updatedAt: new Date()
+      },
+      include: {
+        images: true,
+        videos: true,
+        audios: true,
+      }
+    });
+
+    // Map to frontend type
+    const mappedSegment = mapVideoSegment(segment);
+
+    res.json({
+      success: true,
+      data: { segment: mappedSegment }
+    });
+  } catch (error) {
+    console.error('Update segment error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Failed to update segment'
+      }
     });
   }
 };
@@ -337,84 +465,6 @@ export const deleteProject = async (req: AuthenticatedRequest, res: Response): P
     res.status(500).json({
       success: false,
       error: { message: 'Failed to delete project' }
-    });
-  }
-};
-
-// Update segment
-export const updateSegment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-  try {
-    const userId = req.user?.id;
-    const { projectId, segmentId } = req.params;
-    const updates: UpdateSegmentRequest = req.body;
-
-    if (!userId) {
-      throw createError('User not authenticated', 401);
-    }
-
-    // Verify project ownership
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId }
-    });
-
-    if (!project) {
-      throw createError('Project not found', 404);
-    }
-
-    // Update segment
-    const segment = await prisma.segment.update({
-      where: { id: segmentId },
-      data: {
-        ...updates,
-        updatedAt: new Date()
-      },
-      include: {
-        images: true,
-        videos: true,
-        audios: true,
-      }
-    });
-
-    // Update project timestamp and recalculate status
-    const updatedProject = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        segments: {
-          include: {
-            images: true,
-            videos: true,
-            audios: true,
-          }
-        }
-      }
-    });
-
-    if (updatedProject) {
-      const currentStage = calculateCurrentStage(updatedProject.segments);
-      const status = calculateProjectStatus(updatedProject.segments);
-      
-      await prisma.project.update({
-        where: { id: projectId },
-        data: { 
-          currentStage,
-          status,
-          updatedAt: new Date() 
-        }
-      });
-    }
-
-    // Map to frontend type
-    const mappedSegment = mapVideoSegment(segment);
-
-    res.json({
-      success: true,
-      data: { segment: mappedSegment }
-    });
-  } catch (error) {
-    console.error('Update segment error:', error);
-    res.status(500).json({
-      success: false,
-      error: { message: 'Failed to update segment' }
     });
   }
 };

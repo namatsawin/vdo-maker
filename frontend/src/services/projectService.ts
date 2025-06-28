@@ -38,6 +38,15 @@ class ProjectService {
     return response.data.project;
   }
 
+  // Update segment
+  async updateSegment(projectId: string, segmentId: string, data: UpdateSegmentRequest): Promise<VideoSegment> {
+    const response = await apiClient.put(`/projects/${projectId}/segments/${segmentId}`, data);
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to update segment');
+    }
+    return response.data.segment;
+  }
+
   // Delete project
   async deleteProject(id: string): Promise<void> {
     const response = await apiClient.delete(`/projects/${id}`);

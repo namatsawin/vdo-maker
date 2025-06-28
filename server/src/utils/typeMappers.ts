@@ -150,14 +150,11 @@ export const mapVideoSegment = (segment: PrismaSegmentWithRelations): VideoSegme
     audios: segment.audios.map(mapAudioAsset),
     
     // Individual approval statuses
-    scriptApprovalStatus,
+    scriptApprovalStatus: segment.scriptApprovalStatus as ApprovalStatus,
     imageApprovalStatus: segment.imageApprovalStatus as ApprovalStatus,
     videoApprovalStatus: segment.videoApprovalStatus as ApprovalStatus,
     audioApprovalStatus: segment.audioApprovalStatus as ApprovalStatus,
     finalApprovalStatus: segment.finalApprovalStatus as ApprovalStatus,
-    
-    // Legacy approval status for backward compatibility
-    approvalStatus: scriptApprovalStatus,
     
     createdAt: segment.createdAt.toISOString(),
     updatedAt: segment.updatedAt.toISOString(),
