@@ -15,7 +15,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   }, [checkAuth]);
 
   if (!isAuthenticated) {
-    return <LoginForm onSuccess={() => window.location.reload()} />;
+    return <LoginForm onSuccess={() => window.location.replace(window.location.origin)} />;
   }
 
   return <>{children}</>;
