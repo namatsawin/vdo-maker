@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+.next
+.vite
+*.log
+package-lock.json
+yarn.lock
