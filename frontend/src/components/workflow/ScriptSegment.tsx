@@ -30,8 +30,7 @@ export function ScriptSegment({
   const [editedScript, setEditedScript] = useState(segment.script);
   const [editedVideoPrompt, setEditedVideoPrompt] = useState(segment.videoPrompt);
 
-  // Use scriptApprovalStatus as the main status, fallback to approvalStatus for compatibility
-  const currentStatus = segment.scriptApprovalStatus || segment.approvalStatus || ('DRAFT' as ApprovalStatus);
+  const currentStatus = segment.scriptApprovalStatus
 
   const handleSave = () => {
     onUpdate(segment.id, {

@@ -76,9 +76,6 @@ export interface VideoSegment {
   audioApprovalStatus: ApprovalStatus;
   finalApprovalStatus: ApprovalStatus;
   
-  // Legacy approval status for backward compatibility
-  approvalStatus?: ApprovalStatus;
-  
   createdAt: string;
   updatedAt: string;
 }
