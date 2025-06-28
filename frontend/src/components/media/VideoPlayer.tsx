@@ -64,7 +64,7 @@ export function VideoPlayer({
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = video.url;
-    link.download = video.filename;
+    link.download = video.filename || 'video.mp4';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -148,7 +148,7 @@ export function VideoPlayer({
       
       {/* Video info overlay */}
       <div className="absolute top-4 left-4 bg-black/60 rounded px-2 py-1 text-white text-sm">
-        {video.width}x{video.height} • {Math.round((video.size || 0) / 1024 / 1024)}MB
+        {video.width || 0}x{video.height || 0} • {Math.round((video.size || 0) / 1024 / 1024)}MB
       </div>
     </div>
   );

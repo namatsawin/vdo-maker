@@ -86,7 +86,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = audio.url;
-    link.download = audio.filename;
+    link.download = audio.filename || 'audio.mp3';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -107,7 +107,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
         </Button>
         
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{audio.filename}</p>
+          <p className="text-sm font-medium truncate">{audio.filename || 'Audio File'}</p>
           <p className="text-xs text-muted-foreground">
             {formatTime(currentTime)} / {formatTime(duration)}
           </p>
@@ -131,7 +131,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
       
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-medium">{audio.filename}</h3>
+          <h3 className="font-medium">{audio.filename || 'Audio File'}</h3>
           <p className="text-sm text-muted-foreground">
             {Math.round((audio.size || 0) / 1024)}KB • {formatTime(audio.duration || 0)}
           </p>

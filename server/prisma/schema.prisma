@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -25,36 +25,45 @@ model User {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  status      String   @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, FAILED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  status       String   @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, FAILED
+  currentStage String   @default("SCRIPT_GENERATION") // SCRIPT_GENERATION, IMAGE_GENERATION, VIDEO_GENERATION, AUDIO_GENERATION, FINAL_ASSEMBLY, COMPLETED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   
   // Relations
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  segments    Segment[]
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  segments     Segment[]
   
   @@map("projects")
 }
 
 model Segment {
-  id          String   @id @default(cuid())
-  order       Int
-  script      String
-  videoPrompt String
-  status      String   @default("PENDING") // PENDING, SCRIPT_APPROVED, IMAGES_APPROVED, VIDEOS_APPROVED, AUDIO_APPROVED, COMPLETED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  order                  Int
+  script                 String
+  videoPrompt            String
+  status                 String   @default("DRAFT") // Overall status: DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
+  
+  // Individual approval statuses
+  scriptApprovalStatus   String   @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
+  imageApprovalStatus    String   @default("DRAFT")
+  videoApprovalStatus    String   @default("DRAFT")
+  audioApprovalStatus    String   @default("DRAFT")
+  finalApprovalStatus    String   @default("DRAFT")
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
   
   // Relations
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  images      Image[]
-  videos      Video[]
-  audios      Audio[]
+  projectId              String
+  project                Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  images                 Image[]
+  videos                 Video[]
+  audios                 Audio[]
   
   @@map("segments")
 }
@@ -63,7 +72,7 @@ model Image {
   id        String   @id @default(cuid())
   url       String
   prompt    String
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   metadata  String?  // JSON string for additional data
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -79,7 +88,7 @@ model Video {
   id        String   @id @default(cuid())
   url       String
   prompt    String
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   duration  Int?     // Duration in seconds
   metadata  String?  // JSON string for additional data
   createdAt DateTime @default(now())
@@ -97,7 +106,7 @@ model Audio {
   url       String
   text      String
   voice     String   // Voice type used
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   duration  Int?     // Duration in seconds
   metadata  String?  // JSON string for additional data
   createdAt DateTime @default(now())

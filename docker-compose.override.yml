@@ -17,6 +17,5 @@ services:
       - ./server:/app
       - /app/node_modules
       - backend-uploads:/app/uploads
-      - backend-db:/app/prisma
     environment:
       - NODE_ENV=development

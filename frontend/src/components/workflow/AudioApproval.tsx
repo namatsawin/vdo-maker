@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { Check, X, RotateCcw, Volume2, Download, Settings, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, X, RotateCcw, Play, Pause, Download, Volume2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import type { VideoSegment, MediaAsset, ApprovalStatus } from '@/types';
+import { useProjectStore } from '@/stores/projectStore';
+import { useUIStore } from '@/stores/uiStore';
+import type { VideoSegment, ApprovalStatus } from '@/types';
+import { convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
 
 interface AudioApprovalProps {
   segment: VideoSegment;
@@ -13,6 +16,23 @@ interface AudioApprovalProps {
   isRegenerating?: boolean;
 }
 
+interface GeneratedAudio {
+  id: string;
+  url: string;
+  text: string;
+  voice: string;
+  duration: number;
+  size: number;
+  generatedAt: string;
+}
+
+const VOICE_OPTIONS = [
+  { id: 'default', name: 'Default Voice', description: 'Standard AI voice' },
+  { id: 'male', name: 'Male Voice', description: 'Professional male narrator' },
+  { id: 'female', name: 'Female Voice', description: 'Professional female narrator' },
+  { id: 'casual', name: 'Casual Voice', description: 'Friendly conversational tone' },
+];
+
 export function AudioApproval({
   segment,
   index,
@@ -21,371 +41,302 @@ export function AudioApproval({
   onRegenerate,
   isRegenerating = false
 }: AudioApprovalProps) {
-  const [selectedVoice, setSelectedVoice] = useState('neural-sarah');
-  const [speed, setSpeed] = useState(1.0);
-  const [showSettings, setShowSettings] = useState(false);
+  const [generatedAudio, setGeneratedAudio] = useState<GeneratedAudio | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.8);
+  const [selectedVoice, setSelectedVoice] = useState('default');
+  const [speed, setSpeed] = useState(1.0);
+  
+  const { generateSegmentAudio } = useProjectStore();
+  const { addToast } = useUIStore();
 
-  // Mock audio for each segment
-  const mockAudio: MediaAsset = {
-    id: `audio-${segment.id}`,
-    filename: `segment-${index + 1}-audio.mp3`,
-    url: '/mock-assets/audio/sample-audio.mp3',
-    type: 'audio',
-    size: 524288, // 512KB
-    duration: segment.duration,
-    createdAt: new Date().toISOString(),
-  };
+  // Generate initial audio when component mounts
+  useEffect(() => {
+    if (!generatedAudio && segment.script) {
+      generateInitialAudio();
+    }
+  }, [segment.script]);
 
-  const voiceOptions = [
-    { id: 'neural-sarah', name: 'Sarah (Neural)', description: 'Natural, professional female voice', accent: 'US English' },
-    { id: 'neural-john', name: 'John (Neural)', description: 'Clear, confident male voice', accent: 'US English' },
-    { id: 'neural-emma', name: 'Emma (Neural)', description: 'Warm, friendly female voice', accent: 'British English' },
-    { id: 'neural-david', name: 'David (Neural)', description: 'Deep, authoritative male voice', accent: 'Australian English' },
-    { id: 'neural-maria', name: 'Maria (Neural)', description: 'Expressive, engaging female voice', accent: 'Spanish English' },
-  ];
+  const generateInitialAudio = async () => {
+    setIsGenerating(true);
+    try {
+      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice);
+      
+      const audio: GeneratedAudio = {
+        id: `audio-${segment.id}`,
+        url: audioUrl,
+        text: segment.script,
+        voice: selectedVoice,
+        duration: Math.ceil(segment.script.length / 10), // Rough estimate
+        size: Math.ceil(segment.script.length * 100), // Rough estimate
+        generatedAt: new Date().toISOString(),
+      };
 
-  const getStatusColor = (status: ApprovalStatus) => {
-    switch (status) {
-      case 'approved':
-        return 'border-green-200 bg-green-50';
-      case 'rejected':
-        return 'border-red-200 bg-red-50';
-      case 'pending':
-        return 'border-yellow-200 bg-yellow-50';
-      default:
-        return 'border-gray-200 bg-white';
+      setGeneratedAudio(audio);
+
+      addToast({
+        type: 'success',
+        title: 'Audio Generated',
+        message: 'Voice narration generated successfully!',
+      });
+    } catch (error) {
+      console.error('Audio generation failed:', error);
+      addToast({
+        type: 'error',
+        title: 'Audio Generation Failed',
+        message: 'Failed to generate audio. Please try again.',
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const getStatusBadge = (status: ApprovalStatus) => {
-    switch (status) {
-      case 'approved':
-        return <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">Approved</span>;
-      case 'rejected':
-        return <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">Rejected</span>;
-      case 'pending':
-        return <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">Pending Review</span>;
-      default:
-        return <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">Generated</span>;
+  const handleRegenerate = async () => {
+    setIsGenerating(true);
+    onRegenerate(segment.id);
+    
+    try {
+      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice);
+      
+      const newAudio: GeneratedAudio = {
+        id: `audio-${segment.id}-${Date.now()}`,
+        url: audioUrl,
+        text: segment.script,
+        voice: selectedVoice,
+        duration: Math.ceil(segment.script.length / 10),
+        size: Math.ceil(segment.script.length * 100),
+        generatedAt: new Date().toISOString(),
+      };
+
+      setGeneratedAudio(newAudio);
+
+      addToast({
+        type: 'success',
+        title: 'Audio Regenerated',
+        message: 'New voice narration generated successfully!',
+      });
+    } catch (error) {
+      console.error('Audio regeneration failed:', error);
+      addToast({
+        type: 'error',
+        title: 'Regeneration Failed',
+        message: 'Failed to regenerate audio. Please try again.',
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    // In real implementation, this would control actual audio playback
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleDownload = () => {
+  const handleDownload = (audio: GeneratedAudio) => {
     const link = document.createElement('a');
-    link.href = mockAudio.url;
-    link.download = mockAudio.filename;
+    link.href = audio.url;
+    link.download = `segment-${index + 1}-audio.mp3`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const selectedVoiceData = voiceOptions.find(v => v.id === selectedVoice);
+  const getStatusColor = (status: ApprovalStatus) => {
+    const legacyStatus = convertToLegacyApprovalStatus(status);
+    switch (legacyStatus) {
+      case 'approved':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'rejected':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const selectedVoiceData = VOICE_OPTIONS.find(v => v.id === selectedVoice);
 
   return (
-    <Card className={`${getStatusColor(segment.audioApprovalStatus || 'draft')} ${isRegenerating ? 'opacity-50' : ''}`}>
+    <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <CardTitle className="text-lg">Segment {index + 1} - Audio</CardTitle>
-            {getStatusBadge(segment.audioApprovalStatus || 'draft')}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onRegenerate(segment.id)}
-              disabled={isRegenerating || segment.audioApprovalStatus === 'approved'}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
+          <CardTitle className="flex items-center gap-2">
+            <Volume2 className="h-5 w-5 text-green-500" />
+            Segment {index + 1} - Audio Generation
+          </CardTitle>
+          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(segment.audioApprovalStatus || 'draft')}`}>
+            {(segment.audioApprovalStatus || 'draft').toUpperCase()}
           </div>
         </div>
       </CardHeader>
-
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">Script</h4>
-          <p className="text-sm text-muted-foreground bg-white p-3 rounded border">
-            {segment.script}
-          </p>
+      
+      <CardContent className="space-y-6">
+        {/* Script */}
+        <div>
+          <h4 className="font-medium text-sm text-gray-700 mb-1">Script to Narrate:</h4>
+          <p className="text-sm bg-gray-50 p-3 rounded-lg">{segment.script}</p>
         </div>
 
-        {/* Audio Settings Panel */}
-        {showSettings && (
-          <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
-            <h4 className="font-medium text-sm flex items-center">
-              <Settings className="h-4 w-4 mr-2" />
-              Audio Generation Settings
-            </h4>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Voice Selection</label>
-                <select
-                  value={selectedVoice}
-                  onChange={(e) => setSelectedVoice(e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm"
-                >
-                  {voiceOptions.map((voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.name} - {voice.accent}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  {selectedVoiceData?.description}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Speaking Speed: {speed}x</label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={speed}
-                  onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>0.5x (Slow)</span>
-                  <span>1.0x (Normal)</span>
-                  <span>2.0x (Fast)</span>
-                </div>
-              </div>
+        {/* Voice Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium text-sm text-gray-700 mb-2">Voice Selection:</h4>
+            <select
+              value={selectedVoice}
+              onChange={(e) => setSelectedVoice(e.target.value)}
+              disabled={isGenerating}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {VOICE_OPTIONS.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name} - {voice.description}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <h4 className="font-medium text-sm text-gray-700 mb-2">Speed: {speed}x</h4>
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={speed}
+              onChange={(e) => setSpeed(parseFloat(e.target.value))}
+              disabled={isGenerating}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>0.5x</span>
+              <span>1.0x</span>
+              <span>2.0x</span>
             </div>
+          </div>
+        </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Pitch</label>
-                <select className="w-full p-2 border rounded-md text-sm">
-                  <option value="low">Low</option>
-                  <option value="normal" selected>Normal</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Emphasis</label>
-                <select className="w-full p-2 border rounded-md text-sm">
-                  <option value="none">None</option>
-                  <option value="moderate" selected>Moderate</option>
-                  <option value="strong">Strong</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Pause Length</label>
-                <select className="w-full p-2 border rounded-md text-sm">
-                  <option value="short">Short</option>
-                  <option value="normal" selected>Normal</option>
-                  <option value="long">Long</option>
-                </select>
-              </div>
+        {/* Loading State */}
+        {isGenerating && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-green-500 mx-auto mb-3" />
+              <p className="text-sm text-gray-600">Generating voice narration...</p>
+              <p className="text-xs text-gray-400 mt-1">This may take a few moments</p>
             </div>
           </div>
         )}
 
-        <div className="space-y-2">
-          <h4 className="font-medium text-sm">Generated Audio</h4>
-          
-          {/* Audio Player */}
-          <div className="bg-card border rounded-lg p-6">
-            <div className="flex items-center space-x-4">
-              {/* Voice Avatar */}
-              <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full">
-                <Volume2 className="h-8 w-8 text-primary" />
-              </div>
-              
-              <div className="flex-1 space-y-3">
-                {/* Audio Info */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-sm">{mockAudio.filename}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Voice: {selectedVoiceData?.name} • Speed: {speed}x • {Math.round(mockAudio.size / 1024)}KB
-                    </div>
-                  </div>
+        {/* Generated Audio */}
+        {!isGenerating && generatedAudio && (
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm text-gray-700">Generated Audio:</h4>
+            
+            {/* Audio Player */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={handleDownload}
+                    onClick={() => {
+                      const audio = document.getElementById(`audio-${segment.id}`) as HTMLAudioElement;
+                      if (audio) {
+                        if (isPlaying) {
+                          audio.pause();
+                          setIsPlaying(false);
+                        } else {
+                          audio.play();
+                          setIsPlaying(true);
+                        }
+                      }
+                    }}
                   >
-                    <Download className="h-4 w-4" />
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   </Button>
+                  
+                  <div className="text-sm">
+                    <div className="font-medium">segment-{index + 1}-audio.mp3</div>
+                    <div className="text-gray-500">
+                      Voice: {selectedVoiceData?.name} • Speed: {speed}x • {Math.round(generatedAudio.size / 1024)}KB
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Waveform Visualization */}
-                <div className="w-full h-12 bg-muted rounded flex items-end justify-center px-2 space-x-1">
-                  {Array.from({ length: 60 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`rounded-sm transition-colors ${
-                        i < (currentTime / segment.duration) * 60 
-                          ? 'bg-primary' 
-                          : 'bg-primary/30'
-                      }`}
-                      style={{
-                        width: '3px',
-                        height: `${Math.random() * 80 + 20}%`,
-                        minHeight: '4px',
-                      }}
-                    />
-                  ))}
-                </div>
-                
-                {/* Progress and Time */}
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-mono">{formatTime(currentTime)}</span>
-                  <div className="flex-1 bg-muted rounded-full h-2 relative">
-                    <div 
-                      className="bg-primary rounded-full h-2 transition-all duration-300"
-                      style={{ width: `${(currentTime / segment.duration) * 100}%` }}
-                    />
-                    <input
-                      type="range"
-                      min="0"
-                      max={segment.duration}
-                      value={currentTime}
-                      onChange={(e) => setCurrentTime(Number(e.target.value))}
-                      className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
-                    />
-                  </div>
-                  <span className="text-sm font-mono">{formatTime(segment.duration)}</span>
-                </div>
-
-                {/* Audio Controls */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Button size="sm" variant="outline">
-                      <SkipBack className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handlePlayPause}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      <SkipForward className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Volume2 className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={volume}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      className="w-20"
-                    />
-                    <span className="text-xs text-muted-foreground w-8">
-                      {Math.round(volume * 100)}%
-                    </span>
-                  </div>
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDownload(generatedAudio)}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
               </div>
+              
+              <audio
+                id={`audio-${segment.id}`}
+                src={generatedAudio.url}
+                className="w-full"
+                controls
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onEnded={() => setIsPlaying(false)}
+              />
+            </div>
+            
+            <div className="text-xs text-gray-500 space-y-1">
+              <p><strong>Voice:</strong> {selectedVoiceData?.name}</p>
+              <p><strong>Duration:</strong> ~{generatedAudio.duration}s</p>
+              <p><strong>Generated:</strong> {new Date(generatedAudio.generatedAt).toLocaleString()}</p>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Audio Quality Metrics */}
-        <div className="grid grid-cols-4 gap-4 text-sm">
-          <div className="text-center p-2 bg-muted rounded">
-            <div className="font-medium">Quality</div>
-            <div className="text-muted-foreground">High</div>
-          </div>
-          <div className="text-center p-2 bg-muted rounded">
-            <div className="font-medium">Bitrate</div>
-            <div className="text-muted-foreground">128 kbps</div>
-          </div>
-          <div className="text-center p-2 bg-muted rounded">
-            <div className="font-medium">Format</div>
-            <div className="text-muted-foreground">MP3</div>
-          </div>
-          <div className="text-center p-2 bg-muted rounded">
-            <div className="font-medium">Sample Rate</div>
-            <div className="text-muted-foreground">44.1 kHz</div>
-          </div>
-        </div>
-
-        {/* Approval Actions */}
-        {(segment.audioApprovalStatus === 'draft' || !segment.audioApprovalStatus) && (
-          <div className="flex space-x-2 pt-2">
-            <Button
-              size="sm"
-              onClick={() => onApprove(segment.id)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Check className="h-4 w-4 mr-1" />
-              Approve Audio
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => onReject(segment.id)}
-            >
-              <X className="h-4 w-4 mr-1" />
-              Reject Audio
+        {/* No Audio State */}
+        {!isGenerating && !generatedAudio && (
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <Volume2 className="mx-auto h-12 w-12" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No audio generated yet</h3>
+            <p className="text-gray-500 mb-4">Click "Generate Audio" to create AI voice narration</p>
+            <Button onClick={generateInitialAudio} className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4" />
+              Generate Audio
             </Button>
           </div>
         )}
 
-        {segment.audioApprovalStatus === 'rejected' && (
-          <div className="flex space-x-2 pt-2">
+        {/* Action Buttons */}
+        {generatedAudio && (
+          <div className="flex items-center justify-between pt-4 border-t">
             <Button
-              size="sm"
-              onClick={() => onApprove(segment.id)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Check className="h-4 w-4 mr-1" />
-              Approve Audio
-            </Button>
-          </div>
-        )}
-
-        {segment.audioApprovalStatus === 'approved' && (
-          <div className="flex space-x-2 pt-2">
-            <Button
-              size="sm"
               variant="outline"
-              onClick={() => onReject(segment.id)}
+              onClick={handleRegenerate}
+              disabled={isGenerating || isRegenerating}
+              className="flex items-center gap-2"
             >
-              <X className="h-4 w-4 mr-1" />
-              Revoke Approval
+              {isGenerating || isRegenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              Regenerate
             </Button>
+
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => onReject(segment.id)}
+                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </Button>
+              <Button
+                onClick={() => onApprove(segment.id)}
+                className="flex items-center gap-2"
+              >
+                <Check className="h-4 w-4" />
+                Approve Audio
+              </Button>
+            </div>
           </div>
         )}
-
-        <div className="text-xs text-muted-foreground pt-2 border-t">
-          Duration: {segment.duration}s • 
-          Voice: {selectedVoiceData?.name} • 
-          Generated: {new Date(segment.createdAt).toLocaleDateString()}
-        </div>
       </CardContent>
     </Card>
   );

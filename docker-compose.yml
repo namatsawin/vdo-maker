@@ -1,4 +1,23 @@
 services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=vdo_maker
+      - POSTGRES_USER=vdo_maker_user
+      - POSTGRES_PASSWORD=vdo_maker_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vdo-maker-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vdo_maker_user -d vdo_maker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Frontend Service
   frontend:
     build:
@@ -28,11 +47,11 @@ services:
       - PORT=3001
       - API_VERSION=v1
       - FRONTEND_URL=http://localhost:5173
-      - DATABASE_URL=file:./dev.db
+      - DATABASE_URL=postgresql://vdo_maker_user:vdo_maker_password@postgres:5432/vdo_maker
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-12345
       - JWT_EXPIRES_IN=7d
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key-here}
-      - GOOGLE_CLOUD_PROJECT_ID=${GOOGLE_CLOUD_PROJECT_ID:-your-google-cloud-project-id}
+      - GEMINI_API_KEY=AIzaSyBxyzo9bjjDe5dDVbCZjYzJm-8nLS_6tZg
+      - GOOGLE_CLOUD_PROJECT_ID=gen-lang-client-0526096964
       - PIAPI_API_KEY=${PIAPI_API_KEY:-your-piapi-key-here}
       - PIAPI_BASE_URL=https://api.piapi.ai
       - UPLOAD_DIR=./uploads
@@ -44,7 +63,9 @@ services:
       - ./server:/app
       - /app/node_modules
       - backend-uploads:/app/uploads
-      - backend-db:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - vdo-maker-network
 
@@ -54,4 +75,4 @@ networks:
 
 volumes:
   backend-uploads:
-  backend-db:
+  postgres_data:

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Play, Edit, Trash2, Calendar, Clock } from 'lucide-react';
+import { Plus, Search, MoreVertical, Play, Trash2, Calendar, Clock } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/Button';
@@ -10,30 +10,26 @@ import { ProjectStatus, WorkflowStage } from '@/types';
 import type { Project } from '@/types';
 
 export function ProjectList() {
-  const { projects, loadMockData, deleteProject } = useProjectStore();
+  const { projects, deleteProject } = useProjectStore();
   const { addToast } = useUIStore();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'updated'>('updated');
 
-  useEffect(() => {
-    if (projects.length === 0) {
-      loadMockData();
-    }
-  }, [projects.length, loadMockData]);
+  // No more mock data loading - projects come from real user creation
 
   const filteredProjects = projects
     .filter(project => {
-      const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           project.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (project.name || project.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (project.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.name.localeCompare(b.name);
+          return (a.name || a.title || '').localeCompare(b.name || b.title || '');
         case 'created':
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case 'updated':
@@ -56,49 +52,27 @@ export function ProjectList() {
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
       case ProjectStatus.COMPLETED:
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800';
       case ProjectStatus.IN_PROGRESS:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case ProjectStatus.DRAFT:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-blue-100 text-blue-800';
       case ProjectStatus.FAILED:
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStageLabel = (stage: WorkflowStage) => {
-    switch (stage) {
-      case WorkflowStage.SCRIPT_GENERATION:
-        return 'Script Generation';
-      case WorkflowStage.IMAGE_GENERATION:
-        return 'Image Generation';
-      case WorkflowStage.VIDEO_GENERATION:
-        return 'Video Generation';
-      case WorkflowStage.AUDIO_GENERATION:
-        return 'Audio Generation';
-      case WorkflowStage.FINAL_ASSEMBLY:
-        return 'Final Assembly';
-      case WorkflowStage.COMPLETED:
-        return 'Completed';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  const getProgressPercentage = (project: Project) => {
-    const stages = [
-      WorkflowStage.SCRIPT_GENERATION,
-      WorkflowStage.IMAGE_GENERATION,
-      WorkflowStage.VIDEO_GENERATION,
-      WorkflowStage.AUDIO_GENERATION,
-      WorkflowStage.FINAL_ASSEMBLY,
-      WorkflowStage.COMPLETED
-    ];
+  const getStageDisplay = (stage: WorkflowStage) => {
+    const stageMap: Record<WorkflowStage, string> = {
+      [WorkflowStage.SCRIPT_GENERATION]: 'Script Generation',
+      [WorkflowStage.IMAGE_GENERATION]: 'Image Generation',
+      [WorkflowStage.VIDEO_GENERATION]: 'Video Generation',
+      [WorkflowStage.AUDIO_GENERATION]: 'Audio Generation',
+      [WorkflowStage.FINAL_ASSEMBLY]: 'Final Assembly',
+      [WorkflowStage.COMPLETED]: 'Completed',
+    };
     
-    const currentIndex = stages.indexOf(project.currentStage);
-    return ((currentIndex + 1) / stages.length) * 100;
+    return stageMap[stage] || stage.replace('_', ' ');
   };
 
   return (
@@ -110,25 +84,21 @@ export function ProjectList() {
             Manage your AI video generation projects
           </p>
         </div>
-        <Link
-          to="/projects/create"
-          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
+        <Link to="/projects/create">
+          <Button className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Create Project
+          </Button>
         </Link>
       </div>
 
       {/* Filters and Search */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filter & Search</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search projects..."
                   value={searchTerm}
@@ -138,181 +108,128 @@ export function ProjectList() {
               </div>
             </div>
             
-            <div className="flex gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="all">All Status</option>
-                <option value={ProjectStatus.DRAFT}>Draft</option>
-                <option value={ProjectStatus.IN_PROGRESS}>In Progress</option>
-                <option value={ProjectStatus.COMPLETED}>Completed</option>
-                <option value={ProjectStatus.FAILED}>Failed</option>
-              </select>
-              
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'name' | 'created' | 'updated')}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="updated">Last Updated</option>
-                <option value="created">Date Created</option>
-                <option value="name">Name</option>
-              </select>
-            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Status</option>
+              <option value={ProjectStatus.DRAFT}>Draft</option>
+              <option value={ProjectStatus.IN_PROGRESS}>In Progress</option>
+              <option value={ProjectStatus.COMPLETED}>Completed</option>
+              <option value={ProjectStatus.FAILED}>Failed</option>
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'created' | 'updated')}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="updated">Sort by Updated</option>
+              <option value="created">Sort by Created</option>
+              <option value="name">Sort by Name</option>
+            </select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Project Grid */}
-      {filteredProjects.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg truncate">{project.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {project.description}
-                    </p>
-                  </div>
-                  <div className="ml-2">
-                    <Button size="sm" variant="ghost">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                {/* Status and Stage */}
-                <div className="flex items-center justify-between">
-                  <span className={`px-2 py-1 text-xs rounded border ${getStatusColor(project.status)}`}>
-                    {project.status.replace('_', ' ').toUpperCase()}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {getStageLabel(project.currentStage)}
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Progress</span>
-                    <span>{Math.round(getProgressPercentage(project))}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${getProgressPercentage(project)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Segments Info */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{project.segments.length} segments</span>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(project.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {new Date(project.updatedAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex space-x-2 pt-2">
-                  <Link
-                    to={`/projects/${project.id}/workflow`}
-                    className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3"
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Continue
-                  </Link>
-                  <Button size="sm" variant="outline">
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleDeleteProject(project)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
+      {/* Projects List */}
+      {filteredProjects.length === 0 ? (
         <Card>
-          <CardContent className="text-center py-12">
-            <div className="space-y-4">
-              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                <Search className="h-8 w-8 text-muted-foreground" />
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <Plus className="mx-auto h-16 w-16" />
               </div>
-              <div>
-                <h3 className="text-lg font-medium">No projects found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm || statusFilter !== 'all' 
-                    ? 'Try adjusting your search or filters'
-                    : 'Get started by creating your first project'
-                  }
-                </p>
-              </div>
-              {!searchTerm && statusFilter === 'all' && (
-                <Link
-                  to="/projects/create"
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Project
+              <h3 className="text-xl font-medium text-gray-900 mb-2">
+                {projects.length === 0 ? 'No projects yet' : 'No projects match your search'}
+              </h3>
+              <p className="text-gray-500 mb-6">
+                {projects.length === 0 
+                  ? 'Get started by creating your first AI-powered video project'
+                  : 'Try adjusting your search terms or filters'
+                }
+              </p>
+              {projects.length === 0 && (
+                <Link to="/projects/create">
+                  <Button className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create Your First Project
+                  </Button>
                 </Link>
               )}
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Summary Stats */}
-      {projects.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Project Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold">{projects.length}</div>
-                <div className="text-sm text-muted-foreground">Total Projects</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {projects.filter(p => p.status === ProjectStatus.IN_PROGRESS).length}
+      ) : (
+        <div className="grid gap-6">
+          {filteredProjects.map((project) => (
+            <Card key={project.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-xl">{project.name || project.title}</CardTitle>
+                    <p className="text-muted-foreground mt-1">
+                      {project.description}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(project.status)}`}>
+                      {project.status.replace('_', ' ').toUpperCase()}
+                    </span>
+                    
+                    <div className="relative">
+                      <button className="p-2 hover:bg-gray-100 rounded-full">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">In Progress</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-green-600">
-                  {projects.filter(p => p.status === ProjectStatus.COMPLETED).length}
+              </CardHeader>
+              
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Created {new Date(project.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      Updated {new Date(project.updatedAt).toLocaleDateString()}
+                    </div>
+                    <div>
+                      {project.segments.length} segments
+                    </div>
+                    <div>
+                      Current: {getStageDisplay(project.currentStage)}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Link to={`/projects/${project.id}/workflow`}>
+                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Play className="h-4 w-4" />
+                        Open
+                      </Button>
+                    </Link>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteProject(project)}
+                      className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">Completed</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-600">
-                  {projects.filter(p => p.status === ProjectStatus.DRAFT).length}
-                </div>
-                <div className="text-sm text-muted-foreground">Draft</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

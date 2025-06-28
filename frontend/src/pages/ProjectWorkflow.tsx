@@ -12,7 +12,8 @@ import { VideoApproval } from '@/components/workflow/VideoApproval';
 import { AudioApproval } from '@/components/workflow/AudioApproval';
 import { FinalAssembly } from '@/components/workflow/FinalAssembly';
 import { WorkflowProgress } from '@/components/workflow/WorkflowProgress';
-import { WorkflowStage, ApprovalStatus, type VideoSegment } from '@/types';
+import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from '@/types';
+import { isApprovalStatus } from '@/utils/typeCompatibility';
 
 export function ProjectWorkflow() {
   const { id } = useParams<{ id: string }>();
@@ -20,12 +21,11 @@ export function ProjectWorkflow() {
   const [searchParams, setSearchParams] = useSearchParams();
   const stage = searchParams.get('stage') || 'script';
   
-  const { projects, updateProject, generateMockSegments } = useProjectStore();
+  const { projects, updateProject, generateProjectScript } = useProjectStore();
   const { addToast } = useUIStore();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
 
   const project = projects.find(p => p.id === id);
 
@@ -35,6 +35,7 @@ export function ProjectWorkflow() {
       return;
     }
 
+    // Only generate segments if project has no segments and we're on script stage
     if (project.segments.length === 0 && stage === 'script') {
       handleGenerateSegments();
     }
@@ -45,21 +46,25 @@ export function ProjectWorkflow() {
     setIsGenerating(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const mockSegments = generateMockSegments();
+      // Use real AI script generation
+      const segments = await generateProjectScript(
+        project.name || project.title || 'Untitled Project', 
+        project.description || ''
+      );
       
       updateProject(project.id, {
-        segments: mockSegments,
-        currentStage: WorkflowStage.SCRIPT_GENERATION,
+        segments: segments,
+        currentStage: WorkflowStage.IMAGE_GENERATION,
         updatedAt: new Date().toISOString(),
       });
 
       addToast({
         type: 'success',
         title: 'Script Generated',
-        message: `Generated ${mockSegments.length} video segments`,
+        message: `Generated ${segments.length} video segments using AI`,
       });
     } catch (error) {
+      console.error('Script generation failed:', error);
       addToast({
         type: 'error',
         title: 'Generation Failed',
@@ -87,17 +92,17 @@ export function ProjectWorkflow() {
 
   const getApprovalField = (currentStage: string) => {
     switch (currentStage) {
-      case 'script': return 'approvalStatus';
+      case 'script': return 'scriptApprovalStatus';
       case 'images': return 'imageApprovalStatus';
       case 'videos': return 'videoApprovalStatus';
       case 'audio': return 'audioApprovalStatus';
-      default: return 'approvalStatus';
+      default: return 'scriptApprovalStatus';
     }
   };
 
   const handleApprove = (segmentId: string) => {
     const field = getApprovalField(stage);
-    handleSegmentUpdate(segmentId, { [field]: ApprovalStatus.APPROVED });
+    handleSegmentUpdate(segmentId, { [field]: 'APPROVED' as ApprovalStatus });
     
     addToast({
       type: 'success',
@@ -108,7 +113,7 @@ export function ProjectWorkflow() {
 
   const handleReject = (segmentId: string) => {
     const field = getApprovalField(stage);
-    handleSegmentUpdate(segmentId, { [field]: ApprovalStatus.REJECTED });
+    handleSegmentUpdate(segmentId, { [field]: 'REJECTED' as ApprovalStatus });
     
     addToast({
       type: 'warning',
@@ -136,7 +141,7 @@ export function ProjectWorkflow() {
       } else {
         const field = getApprovalField(stage);
         handleSegmentUpdate(segmentId, {
-          [field]: ApprovalStatus.DRAFT,
+          [field]: 'DRAFT' as ApprovalStatus,
         });
       }
 
@@ -145,7 +150,7 @@ export function ProjectWorkflow() {
         title: 'Segment Regenerated',
         message: 'New content has been generated for this segment',
       });
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         title: 'Regeneration Failed',
@@ -165,7 +170,15 @@ export function ProjectWorkflow() {
       videoPrompt: 'Visual description for the new segment.',
       duration: 10,
       order: project.segments.length,
-      approvalStatus: ApprovalStatus.DRAFT,
+      status: 'DRAFT',
+      scriptApprovalStatus: 'DRAFT' as ApprovalStatus,
+      imageApprovalStatus: 'DRAFT' as ApprovalStatus,
+      videoApprovalStatus: 'DRAFT' as ApprovalStatus,
+      audioApprovalStatus: 'DRAFT' as ApprovalStatus,
+      finalApprovalStatus: 'DRAFT' as ApprovalStatus,
+      images: [],
+      videos: [],
+      audios: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -187,13 +200,21 @@ export function ProjectWorkflow() {
     
     switch (stage) {
       case 'script':
-        return project.segments.every(segment => segment.approvalStatus === ApprovalStatus.APPROVED);
+        return project.segments.every(segment => 
+          isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved')
+        );
       case 'images':
-        return project.segments.every(segment => segment.imageApprovalStatus === ApprovalStatus.APPROVED);
+        return project.segments.every(segment => 
+          isApprovalStatus(segment.imageApprovalStatus, 'approved')
+        );
       case 'videos':
-        return project.segments.every(segment => segment.videoApprovalStatus === ApprovalStatus.APPROVED);
+        return project.segments.every(segment => 
+          isApprovalStatus(segment.videoApprovalStatus, 'approved')
+        );
       case 'audio':
-        return project.segments.every(segment => segment.audioApprovalStatus === ApprovalStatus.APPROVED);
+        return project.segments.every(segment => 
+          isApprovalStatus(segment.audioApprovalStatus, 'approved')
+        );
       default:
         return false;
     }
@@ -261,38 +282,6 @@ export function ProjectWorkflow() {
     }
   };
 
-  const handleExport = async () => {
-    if (!project) return;
-
-    setIsExporting(true);
-    
-    try {
-      // Simulate export process
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      addToast({
-        type: 'success',
-        title: 'Export Complete',
-        message: 'Your video has been exported successfully!',
-      });
-      
-      // Update project status
-      updateProject(project.id, {
-        status: 'completed',
-        currentStage: WorkflowStage.COMPLETED,
-        updatedAt: new Date().toISOString(),
-      });
-      
-    } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Export Failed',
-        message: 'Failed to export video. Please try again.',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const getStageTitle = () => {
     switch (stage) {
@@ -478,9 +467,19 @@ export function ProjectWorkflow() {
       <div className="space-y-4">
         {stage === 'final' ? (
           <FinalAssembly 
-            project={project}
-            onExport={handleExport}
-            isExporting={isExporting}
+            segments={project.segments}
+            onComplete={() => {
+              updateProject(project.id, {
+                status: ProjectStatus.COMPLETED,
+                currentStage: WorkflowStage.COMPLETED,
+                updatedAt: new Date().toISOString(),
+              });
+              addToast({
+                type: 'success',
+                title: 'Project Completed!',
+                message: 'Your video project has been completed successfully.',
+              });
+            }}
           />
         ) : (
           project.segments.map((segment, index) => (

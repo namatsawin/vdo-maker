@@ -1,397 +1,338 @@
-import { useState } from 'react';
-import { Play, Download, Share2, Settings, Film, Clock, FileVideo, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, Download, Film, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import type { Project, MediaAsset } from '@/types';
+import { useUIStore } from '@/stores/uiStore';
+import type { VideoSegment } from '@/types';
+import { isApprovalStatus } from '@/utils/typeCompatibility';
 
 interface FinalAssemblyProps {
-  project: Project;
-  onExport: (settings: ExportSettings) => void;
-  isExporting?: boolean;
+  segments: VideoSegment[];
+  onComplete: () => void;
 }
 
-interface ExportSettings {
-  quality: 'HD' | '4K' | 'SD';
-  format: 'MP4' | 'MOV' | 'AVI';
-  includeSubtitles: boolean;
-  includeBranding: boolean;
-  frameRate: number;
-  bitrate: string;
+interface FinalVideo {
+  id: string;
+  url: string;
+  duration: number;
+  size: number;
+  resolution: string;
+  format: string;
+  createdAt: string;
 }
 
-export function FinalAssembly({ project, onExport, isExporting = false }: FinalAssemblyProps) {
-  const [showSettings, setShowSettings] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [exportSettings, setExportSettings] = useState<ExportSettings>({
-    quality: 'HD',
-    format: 'MP4',
-    includeSubtitles: false,
-    includeBranding: true,
-    frameRate: 30,
-    bitrate: 'auto',
-  });
-
-  // Calculate total duration and stats
-  const totalDuration = project.segments.reduce((total, segment) => total + segment.duration, 0);
-  const approvedSegments = project.segments.filter(s => 
-    s.approvalStatus === 'approved' && 
-    s.imageApprovalStatus === 'approved' && 
-    s.videoApprovalStatus === 'approved' && 
-    s.audioApprovalStatus === 'approved'
-  );
+export function FinalAssembly({ segments, onComplete }: FinalAssemblyProps) {
+  const [finalVideo, setFinalVideo] = useState<FinalVideo | null>(null);
+  const [isAssembling, setIsAssembling] = useState(false);
+  const [assemblyProgress, setAssemblyProgress] = useState(0);
   
-  // Mock final video
-  const finalVideo: MediaAsset = {
-    id: `final-${project.id}`,
-    filename: `${project.name.replace(/\s+/g, '-').toLowerCase()}-final.${exportSettings.format.toLowerCase()}`,
-    url: '/mock-assets/videos/final-video.mp4',
-    type: 'video',
-    size: totalDuration * 1024 * 1024, // Rough estimate: 1MB per second
-    duration: totalDuration,
-    width: exportSettings.quality === '4K' ? 3840 : exportSettings.quality === 'HD' ? 1920 : 1280,
-    height: exportSettings.quality === '4K' ? 2160 : exportSettings.quality === 'HD' ? 1080 : 720,
-    createdAt: new Date().toISOString(),
+  const { addToast } = useUIStore();
+
+  // Check if all segments are approved
+  const allSegmentsApproved = segments.every(segment => 
+    isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved') &&
+    isApprovalStatus(segment.imageApprovalStatus, 'approved') &&
+    isApprovalStatus(segment.videoApprovalStatus, 'approved') &&
+    isApprovalStatus(segment.audioApprovalStatus, 'approved')
+  );
+
+  const approvedSegments = segments.filter(segment => 
+    isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved') &&
+    isApprovalStatus(segment.imageApprovalStatus, 'approved') &&
+    isApprovalStatus(segment.videoApprovalStatus, 'approved') &&
+    isApprovalStatus(segment.audioApprovalStatus, 'approved')
+  );
+
+  // Auto-assemble when all segments are approved
+  useEffect(() => {
+    if (allSegmentsApproved && !finalVideo && !isAssembling) {
+      handleAssemble();
+    }
+  }, [allSegmentsApproved]);
+
+  const handleAssemble = async () => {
+    if (approvedSegments.length === 0) {
+      addToast({
+        type: 'error',
+        title: 'No Approved Segments',
+        message: 'Please approve all segments before final assembly.',
+      });
+      return;
+    }
+
+    setIsAssembling(true);
+    setAssemblyProgress(0);
+
+    try {
+      // Simulate assembly progress
+      const progressInterval = setInterval(() => {
+        setAssemblyProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 500);
+
+      // Simulate assembly process (in real implementation, this would call backend API)
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      clearInterval(progressInterval);
+      setAssemblyProgress(100);
+
+      // Create final video object (in real implementation, this would come from backend)
+      const totalDuration = approvedSegments.reduce((sum, segment) => sum + (segment.duration || 0), 0);
+      const estimatedSize = totalDuration * 2 * 1024 * 1024; // Rough estimate: 2MB per second
+
+      const video: FinalVideo = {
+        id: `final-video-${Date.now()}`,
+        url: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4', // Fallback sample
+        duration: totalDuration,
+        size: estimatedSize,
+        resolution: '1920x1080',
+        format: 'MP4',
+        createdAt: new Date().toISOString(),
+      };
+
+      setFinalVideo(video);
+
+      addToast({
+        type: 'success',
+        title: 'Video Assembly Complete!',
+        message: `Successfully assembled ${approvedSegments.length} segments into final video.`,
+      });
+
+      // Mark project as complete
+      onComplete();
+
+    } catch (error) {
+      console.error('Assembly failed:', error);
+      addToast({
+        type: 'error',
+        title: 'Assembly Failed',
+        message: 'Failed to assemble final video. Please try again.',
+      });
+    } finally {
+      setIsAssembling(false);
+    }
   };
 
-  const handleExport = () => {
-    onExport(exportSettings);
+  const handleDownload = (video: FinalVideo) => {
+    const link = document.createElement('a');
+    link.href = video.url;
+    link.download = `final-video-${new Date().toISOString().split('T')[0]}.mp4`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    addToast({
+      type: 'success',
+      title: 'Download Started',
+      message: 'Your final video download has started.',
+    });
   };
 
-  const handleShare = () => {
-    const shareUrl = `https://vdo-maker.com/share/${project.id}`;
-    navigator.clipboard.writeText(shareUrl);
-    // Toast notification would be shown here
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 Bytes';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const getSegmentStatus = (segment: any) => {
-    const allApproved = segment.approvalStatus === 'approved' && 
-                       segment.imageApprovalStatus === 'approved' && 
-                       segment.videoApprovalStatus === 'approved' && 
-                       segment.audioApprovalStatus === 'approved';
-    return allApproved ? 'complete' : 'incomplete';
-  };
-
-  const qualityPresets = {
-    'SD': { width: 1280, height: 720, bitrate: '2 Mbps' },
-    'HD': { width: 1920, height: 1080, bitrate: '5 Mbps' },
-    '4K': { width: 3840, height: 2160, bitrate: '15 Mbps' },
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="space-y-6">
-      {/* Final Video Preview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Film className="h-5 w-5" />
-            <span>Final Video Assembly</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Video Preview */}
-            <div className="relative bg-black rounded-lg overflow-hidden">
-              <div className="aspect-video bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center relative">
-                <div className="text-center text-white">
-                  <div className="text-8xl mb-6">🎬</div>
-                  <h3 className="text-3xl font-bold mb-2">{project.name}</h3>
-                  <p className="text-lg opacity-80">{project.segments.length} segments assembled</p>
-                  <p className="text-sm opacity-60 mt-2">
-                    {finalVideo.width}x{finalVideo.height} • {Math.round(finalVideo.size / 1024 / 1024)}MB
-                  </p>
-                </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Film className="h-5 w-5 text-purple-500" />
+          Final Assembly
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        {/* Segment Status Overview */}
+        <div className="space-y-3">
+          <h4 className="font-medium text-sm text-gray-700">Segment Status:</h4>
+          <div className="grid gap-2">
+            {segments.map((segment, index) => {
+              const isFullyApproved = 
+                isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved') &&
+                isApprovalStatus(segment.imageApprovalStatus, 'approved') &&
+                isApprovalStatus(segment.videoApprovalStatus, 'approved') &&
+                isApprovalStatus(segment.audioApprovalStatus, 'approved');
 
-                {/* Play Button Overlay */}
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors group"
+              return (
+                <div
+                  key={segment.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    isFullyApproved 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
                 >
-                  <div className="bg-white/90 rounded-full p-6 group-hover:bg-white transition-colors">
-                    <Play className="h-12 w-12 text-black ml-1" />
-                  </div>
-                </button>
-              </div>
-
-              {/* Video Controls */}
-              <div className="bg-black/90 text-white p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="text-white hover:bg-white/20"
-                    >
-                      <Play className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm">
-                      0:00 / {Math.floor(totalDuration / 60)}:{(totalDuration % 60).toString().padStart(2, '0')}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      isFullyApproved ? 'bg-green-500' : 'bg-gray-400'
+                    }`} />
+                    <span className="font-medium">Segment {index + 1}</span>
+                    <span className="text-sm text-gray-600">
+                      {formatDuration(segment.duration || 0)}
                     </span>
                   </div>
-                  <div className="text-sm">
-                    {exportSettings.quality} • {exportSettings.format}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Video Stats */}
-            <div className="grid grid-cols-4 gap-4 text-center">
-              <div className="p-3 bg-muted rounded-lg">
-                <Clock className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-sm font-medium">
-                  {Math.floor(totalDuration / 60)}:{(totalDuration % 60).toString().padStart(2, '0')}
-                </p>
-                <p className="text-xs text-muted-foreground">Duration</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <FileVideo className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-sm font-medium">{exportSettings.quality}</p>
-                <p className="text-xs text-muted-foreground">Quality</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <Film className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-sm font-medium">{project.segments.length}</p>
-                <p className="text-xs text-muted-foreground">Segments</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <CheckCircle className="h-5 w-5 mx-auto mb-1 text-green-600" />
-                <p className="text-sm font-medium">{approvedSegments.length}/{project.segments.length}</p>
-                <p className="text-xs text-muted-foreground">Ready</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Segment Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Segment Timeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {project.segments.map((segment, index) => {
-              const status = getSegmentStatus(segment);
-              return (
-                <div key={segment.id} className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{segment.script.substring(0, 60)}...</p>
-                    <p className="text-xs text-muted-foreground">{segment.duration}s</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {/* Status Indicators */}
-                    <div className="flex space-x-1">
-                      <div 
-                        className={`w-2 h-2 rounded-full ${
-                          segment.approvalStatus === 'approved' ? 'bg-green-500' : 'bg-gray-300'
-                        }`} 
-                        title="Script" 
-                      />
-                      <div 
-                        className={`w-2 h-2 rounded-full ${
-                          segment.imageApprovalStatus === 'approved' ? 'bg-green-500' : 'bg-gray-300'
-                        }`} 
-                        title="Image" 
-                      />
-                      <div 
-                        className={`w-2 h-2 rounded-full ${
-                          segment.videoApprovalStatus === 'approved' ? 'bg-green-500' : 'bg-gray-300'
-                        }`} 
-                        title="Video" 
-                      />
-                      <div 
-                        className={`w-2 h-2 rounded-full ${
-                          segment.audioApprovalStatus === 'approved' ? 'bg-green-500' : 'bg-gray-300'
-                        }`} 
-                        title="Audio" 
-                      />
-                    </div>
-                    {status === 'complete' ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    )}
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={`px-2 py-1 rounded ${
+                      isApprovalStatus(segment.scriptApprovalStatus || segment.approvalStatus, 'approved')
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      Script
+                    </span>
+                    <span className={`px-2 py-1 rounded ${
+                      isApprovalStatus(segment.imageApprovalStatus, 'approved')
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      Image
+                    </span>
+                    <span className={`px-2 py-1 rounded ${
+                      isApprovalStatus(segment.videoApprovalStatus, 'approved')
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      Video
+                    </span>
+                    <span className={`px-2 py-1 rounded ${
+                      isApprovalStatus(segment.audioApprovalStatus, 'approved')
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      Audio
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Export Settings */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Export Settings</CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {showSettings && (
-            <div className="space-y-6 mb-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Video Quality</label>
-                    <select
-                      value={exportSettings.quality}
-                      onChange={(e) => setExportSettings(prev => ({ ...prev, quality: e.target.value as any }))}
-                      className="w-full p-2 border rounded-md text-sm"
-                    >
-                      <option value="SD">SD (720p) - Smaller file size</option>
-                      <option value="HD">HD (1080p) - Recommended</option>
-                      <option value="4K">4K (2160p) - Highest quality</option>
-                    </select>
-                    <p className="text-xs text-muted-foreground">
-                      {qualityPresets[exportSettings.quality].width}x{qualityPresets[exportSettings.quality].height} • 
-                      {qualityPresets[exportSettings.quality].bitrate}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">File Format</label>
-                    <select
-                      value={exportSettings.format}
-                      onChange={(e) => setExportSettings(prev => ({ ...prev, format: e.target.value as any }))}
-                      className="w-full p-2 border rounded-md text-sm"
-                    >
-                      <option value="MP4">MP4 - Universal compatibility</option>
-                      <option value="MOV">MOV - Apple optimized</option>
-                      <option value="AVI">AVI - Windows compatible</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Frame Rate</label>
-                    <select
-                      value={exportSettings.frameRate}
-                      onChange={(e) => setExportSettings(prev => ({ ...prev, frameRate: Number(e.target.value) }))}
-                      className="w-full p-2 border rounded-md text-sm"
-                    >
-                      <option value={24}>24 fps - Cinematic</option>
-                      <option value={30}>30 fps - Standard</option>
-                      <option value={60}>60 fps - Smooth motion</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Bitrate</label>
-                    <select
-                      value={exportSettings.bitrate}
-                      onChange={(e) => setExportSettings(prev => ({ ...prev, bitrate: e.target.value }))}
-                      className="w-full p-2 border rounded-md text-sm"
-                    >
-                      <option value="auto">Auto (Recommended)</option>
-                      <option value="high">High Quality</option>
-                      <option value="medium">Medium Quality</option>
-                      <option value="low">Low Quality</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.includeSubtitles}
-                    onChange={(e) => setExportSettings(prev => ({ ...prev, includeSubtitles: e.target.checked }))}
-                    className="rounded"
-                  />
-                  <span className="text-sm">Include subtitles/captions</span>
-                </label>
-                
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.includeBranding}
-                    onChange={(e) => setExportSettings(prev => ({ ...prev, includeBranding: e.target.checked }))}
-                    className="rounded"
-                  />
-                  <span className="text-sm">Include VDO Maker watermark</span>
-                </label>
-              </div>
+        {/* Assembly Status */}
+        {!allSegmentsApproved && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-yellow-800">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">Waiting for Approvals</span>
             </div>
-          )}
-
-          {/* Export Progress */}
-          {isExporting && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center space-x-3 mb-3">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="font-medium text-blue-900">Exporting Video...</span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300 animate-pulse"
-                  style={{ width: '60%' }}
-                />
-              </div>
-              <p className="text-sm text-blue-700 mt-2">
-                Processing segments and assembling final video...
-              </p>
-            </div>
-          )}
-
-          {/* Export Actions */}
-          <div className="flex space-x-3">
-            <Button
-              onClick={handleExport}
-              disabled={isExporting || approvedSegments.length !== project.segments.length}
-              loading={isExporting}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export Video'}
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={handleShare}
-              disabled={isExporting}
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share Preview
-            </Button>
-          </div>
-
-          {/* Export Preview */}
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              <strong>Export Preview:</strong> {finalVideo.filename} • 
-              {exportSettings.quality} ({finalVideo.width}x{finalVideo.height}) • 
-              {exportSettings.format} • 
-              {exportSettings.frameRate} fps • 
-              ~{Math.round(finalVideo.size / 1024 / 1024)}MB
+            <p className="text-sm text-yellow-700 mt-1">
+              {segments.length - approvedSegments.length} segments still need approval before final assembly.
             </p>
           </div>
+        )}
 
-          {/* Readiness Check */}
-          {approvedSegments.length !== project.segments.length && (
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm font-medium text-yellow-800">
-                  {project.segments.length - approvedSegments.length} segments need approval before export
-                </span>
+        {/* Assembly Progress */}
+        {isAssembling && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Assembling Final Video</h3>
+                <p className="text-gray-500 mb-4">
+                  Combining {approvedSegments.length} segments into final video...
+                </p>
+                
+                <div className="w-64 bg-gray-200 rounded-full h-2 mx-auto">
+                  <div 
+                    className="bg-purple-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${assemblyProgress}%` }}
+                  />
+                </div>
+                <p className="text-sm text-gray-600 mt-2">{Math.round(assemblyProgress)}% complete</p>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        )}
+
+        {/* Final Video */}
+        {finalVideo && (
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm text-gray-700">Final Video:</h4>
+            
+            {/* Video Player */}
+            <div className="relative bg-black rounded-lg overflow-hidden">
+              <video
+                src={finalVideo.url}
+                className="w-full h-64 object-contain"
+                controls
+              />
+              <div className="absolute top-3 right-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDownload(finalVideo)}
+                  className="bg-white/90 hover:bg-white"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Video Details */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Duration:</span>
+                  <div className="font-medium">{formatDuration(finalVideo.duration)}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Size:</span>
+                  <div className="font-medium">{formatFileSize(finalVideo.size)}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Resolution:</span>
+                  <div className="font-medium">{finalVideo.resolution}</div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Format:</span>
+                  <div className="font-medium">{finalVideo.format}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Success Message */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-green-800">
+                <Check className="h-5 w-5" />
+                <span className="font-medium">Video Assembly Complete!</span>
+              </div>
+              <p className="text-sm text-green-700 mt-1">
+                Your final video has been successfully created and is ready for download.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Assembly Button */}
+        {allSegmentsApproved && !finalVideo && !isAssembling && (
+          <div className="text-center py-8">
+            <Button
+              onClick={handleAssemble}
+              size="lg"
+              className="flex items-center gap-2"
+            >
+              <Film className="h-5 w-5" />
+              Assemble Final Video
+            </Button>
+            <p className="text-sm text-gray-500 mt-2">
+              This will combine all {approvedSegments.length} approved segments
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

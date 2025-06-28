@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { geminiService } from '@/services/geminiService';
+import { imagen4Service } from '@/services/imagen4Service';
+import { klingAIService } from '@/services/klingAIService';
 import { ApiResponse, ScriptGenerationRequest } from '@/types';
 import { createError } from '@/middleware/errorHandler';
 
@@ -24,6 +26,130 @@ export const generateScript = async (req: Request, res: Response, next: NextFunc
         segments,
         generatedAt: new Date().toISOString()
       }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { prompt, aspectRatio, safetyFilterLevel, personGeneration } = req.body;
+
+    if (!prompt) {
+      throw createError('Image prompt is required', 400);
+    }
+
+    // Validate the prompt
+    const validation = await imagen4Service.validateImagePrompt(prompt);
+    if (!validation.valid) {
+      throw createError(`Invalid prompt: ${validation.reason}`, 400);
+    }
+
+    const result = await imagen4Service.generateImage({
+      prompt,
+      aspectRatio,
+      safetyFilterLevel,
+      personGeneration
+    });
+
+    if (!result.success) {
+      throw createError(result.error || 'Image generation failed', 500);
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      data: result
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const generateVideo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { imageUrl, imageBase64, prompt, duration, aspectRatio, mode } = req.body;
+
+    if (!prompt) {
+      throw createError('Video prompt is required', 400);
+    }
+
+    // Validate the request
+    const validation = await klingAIService.validateVideoRequest({
+      imageUrl,
+      imageBase64,
+      prompt,
+      duration,
+      aspectRatio,
+      mode
+    });
+
+    if (!validation.valid) {
+      throw createError(`Invalid request: ${validation.reason}`, 400);
+    }
+
+    const result = await klingAIService.generateVideo({
+      imageUrl,
+      imageBase64,
+      prompt,
+      duration,
+      aspectRatio,
+      mode
+    });
+
+    if (!result.success) {
+      throw createError(result.error || 'Video generation failed', 500);
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      data: result
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getVideoStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { taskId } = req.params;
+
+    if (!taskId) {
+      throw createError('Task ID is required', 400);
+    }
+
+    const result = await klingAIService.getVideoStatus(taskId);
+
+    const response: ApiResponse = {
+      success: true,
+      data: result
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelVideoGeneration = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { taskId } = req.params;
+
+    if (!taskId) {
+      throw createError('Task ID is required', 400);
+    }
+
+    const result = await klingAIService.cancelVideoGeneration(taskId);
+
+    const response: ApiResponse = {
+      success: true,
+      data: result
     };
 
     res.json(response);
@@ -64,13 +190,19 @@ export const generateTTS = async (req: Request, res: Response, next: NextFunctio
 
 export const testAIConnection = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const geminiStatus = await geminiService.testConnection();
+    const [geminiStatus, imagen4Status, klingStatus] = await Promise.all([
+      geminiService.testConnection(),
+      imagen4Service.getGenerationStatus(),
+      klingAIService.getGenerationStatus()
+    ]);
 
     const response: ApiResponse = {
       success: true,
       data: {
         services: {
-          gemini: geminiStatus ? 'connected' : 'disconnected'
+          gemini: geminiStatus ? 'connected' : 'disconnected',
+          imagen4: imagen4Status.configured ? 'configured' : 'fallback_mode',
+          klingAI: klingStatus.configured ? 'configured' : 'fallback_mode'
         },
         testedAt: new Date().toISOString()
       }

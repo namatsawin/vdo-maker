@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { VideoSegment, ApprovalStatus } from '@/types';
+import { isApprovalStatus, convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
 
 interface ScriptSegmentProps {
   segment: VideoSegment;
@@ -29,6 +30,9 @@ export function ScriptSegment({
   const [editedScript, setEditedScript] = useState(segment.script);
   const [editedVideoPrompt, setEditedVideoPrompt] = useState(segment.videoPrompt);
 
+  // Use scriptApprovalStatus as the main status, fallback to approvalStatus for compatibility
+  const currentStatus = segment.scriptApprovalStatus || segment.approvalStatus || ('DRAFT' as ApprovalStatus);
+
   const handleSave = () => {
     onUpdate(segment.id, {
       script: editedScript,
@@ -44,7 +48,8 @@ export function ScriptSegment({
   };
 
   const getStatusColor = (status: ApprovalStatus) => {
-    switch (status) {
+    const legacyStatus = convertToLegacyApprovalStatus(status);
+    switch (legacyStatus) {
       case 'approved':
         return 'border-green-200 bg-green-50';
       case 'rejected':
@@ -57,7 +62,8 @@ export function ScriptSegment({
   };
 
   const getStatusBadge = (status: ApprovalStatus) => {
-    switch (status) {
+    const legacyStatus = convertToLegacyApprovalStatus(status);
+    switch (legacyStatus) {
       case 'approved':
         return <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">Approved</span>;
       case 'rejected':
@@ -70,13 +76,13 @@ export function ScriptSegment({
   };
 
   return (
-    <Card className={`${getStatusColor(segment.approvalStatus)} ${isDragging ? 'opacity-50' : ''}`}>
+    <Card className={`${getStatusColor(currentStatus)} ${isDragging ? 'opacity-50' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
             <CardTitle className="text-lg">Segment {index + 1}</CardTitle>
-            {getStatusBadge(segment.approvalStatus)}
+            {getStatusBadge(currentStatus)}
           </div>
           <div className="flex items-center space-x-2">
             {!isEditing && (
@@ -92,7 +98,7 @@ export function ScriptSegment({
               size="sm"
               variant="ghost"
               onClick={() => onRegenerate(segment.id)}
-              disabled={segment.approvalStatus === 'approved'}
+              disabled={isApprovalStatus(currentStatus, 'approved')}
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -152,7 +158,7 @@ export function ScriptSegment({
               </p>
             </div>
 
-            {segment.approvalStatus === 'draft' && (
+            {isApprovalStatus(currentStatus, 'draft') && (
               <div className="flex space-x-2 pt-2">
                 <Button
                   size="sm"
@@ -173,7 +179,7 @@ export function ScriptSegment({
               </div>
             )}
 
-            {segment.approvalStatus === 'rejected' && (
+            {isApprovalStatus(currentStatus, 'rejected') && (
               <div className="flex space-x-2 pt-2">
                 <Button
                   size="sm"
@@ -186,7 +192,7 @@ export function ScriptSegment({
               </div>
             )}
 
-            {segment.approvalStatus === 'approved' && (
+            {isApprovalStatus(currentStatus, 'approved') && (
               <div className="flex space-x-2 pt-2">
                 <Button
                   size="sm"
@@ -202,7 +208,7 @@ export function ScriptSegment({
         )}
 
         <div className="text-xs text-muted-foreground pt-2 border-t">
-          Duration: ~{segment.duration}s • 
+          Duration: ~{segment.duration || 0}s • 
           Created: {new Date(segment.createdAt).toLocaleDateString()}
         </div>
       </CardContent>

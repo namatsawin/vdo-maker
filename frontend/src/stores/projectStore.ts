@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { Project, VideoSegment } from '@/types';
-import { mockProjects } from '@/data/mockProjects';
+import { projectService } from '@/services/projectService';
+import { useAIStore } from './aiStore';
 
 interface ProjectState {
   projects: Project[];
@@ -11,112 +11,249 @@ interface ProjectState {
 }
 
 interface ProjectActions {
+  // Server-based actions
+  loadProjects: () => Promise<void>;
+  loadProject: (id: string) => Promise<void>;
+  createProject: (data: { title: string; description?: string; story?: string }) => Promise<Project>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  updateSegment: (projectId: string, segmentId: string, updates: any) => Promise<void>;
+  
+  // Local state management
   setProjects: (projects: Project[]) => void;
   setCurrentProject: (project: Project | null) => void;
-  addProject: (project: Project) => void;
-  updateProject: (id: string, updates: Partial<Project>) => void;
-  deleteProject: (id: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  loadMockData: () => void;
-  generateMockSegments: () => VideoSegment[];
+  
+  // Real AI methods
+  generateProjectScript: (title: string, description?: string) => Promise<VideoSegment[]>;
+  generateSegmentImage: (segmentId: string, prompt: string, aspectRatio?: string) => Promise<string>;
+  generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string) => Promise<{ taskId: string; videoUrl?: string }>;
+  generateSegmentAudio: (segmentId: string, text: string, voice?: string) => Promise<string>;
 }
 
-const mockSegmentTemplates = [
-  {
-    script: "Welcome to our story. In a world where technology meets creativity, we embark on a journey that will transform how we think about digital content creation.",
-    videoPrompt: "A futuristic cityscape at dawn with gleaming skyscrapers and flying vehicles, establishing the high-tech world of our story."
-  },
-  {
-    script: "Our protagonist discovers an ancient artifact that holds the key to unlocking unprecedented creative powers, changing everything they thought they knew.",
-    videoPrompt: "Close-up of hands carefully examining a glowing, mysterious artifact with intricate symbols and pulsing energy."
-  },
-  {
-    script: "As the truth unfolds, allies and enemies emerge from the shadows, each with their own agenda in this battle for creative control.",
-    videoPrompt: "Dramatic silhouettes of multiple figures standing in a dimly lit room, tension visible in their postures."
-  },
-  {
-    script: "The final confrontation approaches. With newfound abilities and trusted companions, our hero must make a choice that will determine the future.",
-    videoPrompt: "Epic wide shot of the protagonist standing at the edge of a cliff, overlooking a vast landscape, wind blowing through their hair."
-  },
-  {
-    script: "In the end, creativity triumphs over conformity, and a new era of artistic expression begins, inspiring generations to come.",
-    videoPrompt: "Bright, hopeful scene showing people of all ages creating art, music, and stories together in a vibrant community space."
-  }
-];
+export const useProjectStore = create<ProjectState & ProjectActions>()((set) => ({
+  // State
+  projects: [],
+  currentProject: null,
+  isLoading: false,
+  error: null,
 
-export const useProjectStore = create<ProjectState & ProjectActions>()(
-  persist(
-    (set, _get) => ({
-      // State
-      projects: [],
-      currentProject: null,
-      isLoading: false,
-      error: null,
-
-      // Actions
-      setProjects: (projects) => set({ projects }),
-
-      setCurrentProject: (project) => set({ currentProject: project }),
-
-      addProject: (project) =>
-        set((state) => ({
-          projects: [...state.projects, project],
-        })),
-
-      updateProject: (id, updates) =>
-        set((state) => ({
-          projects: state.projects.map((project) =>
-            project.id === id ? { ...project, ...updates } : project
-          ),
-          currentProject:
-            state.currentProject?.id === id
-              ? { ...state.currentProject, ...updates }
-              : state.currentProject,
-        })),
-
-      deleteProject: (id) =>
-        set((state) => ({
-          projects: state.projects.filter((project) => project.id !== id),
-          currentProject:
-            state.currentProject?.id === id ? null : state.currentProject,
-        })),
-
-      setLoading: (loading) => set({ isLoading: loading }),
-
-      setError: (error) => set({ error }),
-
-      generateMockSegments: () => {
-        const numSegments = Math.floor(Math.random() * 3) + 3; // 3-5 segments
-        const segments: VideoSegment[] = [];
-        
-        for (let i = 0; i < numSegments; i++) {
-          const template = mockSegmentTemplates[i % mockSegmentTemplates.length];
-          segments.push({
-            id: Math.random().toString(36).substr(2, 9),
-            script: template.script,
-            videoPrompt: template.videoPrompt,
-            duration: Math.floor(Math.random() * 20) + 10, // 10-30 seconds
-            order: i,
-            approvalStatus: 'draft',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          });
-        }
-        
-        return segments;
-      },
-
-      loadMockData: () => {
-        set({ projects: mockProjects, isLoading: false, error: null });
-      },
-    }),
-    {
-      name: 'project-store',
-      partialize: (state) => ({
-        projects: state.projects,
-        currentProject: state.currentProject,
-      }),
+  // Server-based actions
+  loadProjects: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const projects = await projectService.getProjects();
+      set({ projects, isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load projects';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
     }
-  )
-);
+  },
+
+  loadProject: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const project = await projectService.getProject(id);
+      set({ currentProject: project, isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load project';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  createProject: async (data) => {
+    set({ isLoading: true, error: null });
+    try {
+      const project = await projectService.createProject(data);
+      
+      // Add to local state
+      set(state => ({
+        projects: [project, ...state.projects],
+        currentProject: project,
+        isLoading: false
+      }));
+      
+      return project;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create project';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  updateProject: async (id, updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updatedProject = await projectService.updateProject(id, updates);
+      
+      // Update local state
+      set(state => ({
+        projects: state.projects.map(p => p.id === id ? updatedProject : p),
+        currentProject: state.currentProject?.id === id ? updatedProject : state.currentProject,
+        isLoading: false
+      }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update project';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  deleteProject: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await projectService.deleteProject(id);
+      
+      // Remove from local state
+      set(state => ({
+        projects: state.projects.filter(p => p.id !== id),
+        currentProject: state.currentProject?.id === id ? null : state.currentProject,
+        isLoading: false
+      }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete project';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  updateSegment: async (projectId, segmentId, updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updatedSegment = await projectService.updateSegment(projectId, segmentId, updates);
+      
+      // Update local state
+      set(state => ({
+        projects: state.projects.map(p => 
+          p.id === projectId 
+            ? { ...p, segments: p.segments.map(s => s.id === segmentId ? updatedSegment : s) }
+            : p
+        ),
+        currentProject: state.currentProject?.id === projectId
+          ? { 
+              ...state.currentProject, 
+              segments: state.currentProject.segments.map(s => s.id === segmentId ? updatedSegment : s)
+            }
+          : state.currentProject,
+        isLoading: false
+      }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update segment';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  // Local state management
+  setProjects: (projects) => set({ projects }),
+  setCurrentProject: (project) => set({ currentProject: project }),
+  setLoading: (loading) => set({ isLoading: loading }),
+  setError: (error) => set({ error }),
+
+  // Real AI methods
+  generateProjectScript: async (title: string, description?: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const aiStore = useAIStore.getState();
+      const result = await aiStore.generateScript({ title, description });
+
+      if (result && result.segments) {
+        // Convert API response to VideoSegment format
+        const segments: VideoSegment[] = result.segments.map((segment: any, index: number) => ({
+          id: Math.random().toString(36).substr(2, 9),
+          order: segment.order || index,
+          script: segment.script,
+          videoPrompt: segment.videoPrompt,
+          duration: Math.floor(Math.random() * 20) + 10, // 10-30 seconds
+          approvalStatus: 'draft' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+
+        set({ isLoading: false });
+        return segments;
+      } else {
+        throw new Error('Invalid script generation response');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Script generation failed';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  generateSegmentImage: async (_segmentId: string, prompt: string, aspectRatio: string = 'LANDSCAPE') => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const aiStore = useAIStore.getState();
+      const result = await aiStore.generateImage({ 
+        prompt, 
+        aspectRatio: aspectRatio as 'SQUARE' | 'PORTRAIT' | 'LANDSCAPE'
+      });
+
+      if (result && (result.imageUrl || result.imageBase64)) {
+        set({ isLoading: false });
+        return result.imageUrl || `data:image/png;base64,${result.imageBase64}`;
+      } else {
+        throw new Error('Invalid image generation response');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Image generation failed';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  generateSegmentVideo: async (_segmentId: string, imageUrl: string, prompt: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const aiStore = useAIStore.getState();
+      const result = await aiStore.generateVideo({ 
+        imageUrl, 
+        prompt,
+        duration: 5,
+        aspectRatio: '16:9'
+      });
+
+      if (result && (result.taskId || result.videoUrl)) {
+        set({ isLoading: false });
+        return {
+          taskId: result.taskId || '',
+          videoUrl: result.videoUrl
+        };
+      } else {
+        throw new Error('Invalid video generation response');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Video generation failed';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  generateSegmentAudio: async (_segmentId: string, text: string, voice: string = 'default') => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const aiStore = useAIStore.getState();
+      const result = await aiStore.generateAudio(text, voice);
+
+      if (result && result.audioUrl) {
+        set({ isLoading: false });
+        return result.audioUrl;
+      } else {
+        throw new Error('Invalid audio generation response');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Audio generation failed';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+}));

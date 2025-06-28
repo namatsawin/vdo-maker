@@ -38,7 +38,7 @@ export function ImageGallery({ images, className, columns = 3 }: ImageGalleryPro
   const handleDownload = (image: MediaAsset) => {
     const link = document.createElement('a');
     link.href = image.url;
-    link.download = image.filename;
+    link.download = image.filename || 'image.jpg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -66,7 +66,7 @@ export function ImageGallery({ images, className, columns = 3 }: ImageGalleryPro
           >
             <img
               src={image.url}
-              alt={image.filename}
+              alt={image.filename || 'Generated image'}
               className="w-full h-48 object-cover transition-transform group-hover:scale-105"
             />
             
@@ -98,9 +98,9 @@ export function ImageGallery({ images, className, columns = 3 }: ImageGalleryPro
             
             {/* Image info */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-              <p className="text-white text-xs truncate">{image.filename}</p>
+              <p className="text-white text-xs truncate">{image.filename || 'Generated image'}</p>
               <p className="text-white/70 text-xs">
-                {image.width}x{image.height} • {Math.round((image.size || 0) / 1024)}KB
+                {image.width || 0}x{image.height || 0} • {Math.round((image.size || 0) / 1024)}KB
               </p>
             </div>
           </div>
@@ -146,15 +146,15 @@ export function ImageGallery({ images, className, columns = 3 }: ImageGalleryPro
             {/* Image */}
             <img
               src={selectedImage.url}
-              alt={selectedImage.filename}
+              alt={selectedImage.filename || 'Generated image'}
               className="max-w-full max-h-full object-contain"
             />
             
             {/* Image info */}
             <div className="absolute bottom-4 left-4 bg-black/60 rounded px-3 py-2 text-white">
-              <p className="font-medium">{selectedImage.filename}</p>
+              <p className="font-medium">{selectedImage.filename || 'Generated image'}</p>
               <p className="text-sm text-white/70">
-                {selectedImage.width}x{selectedImage.height} • {Math.round((selectedImage.size || 0) / 1024)}KB
+                {selectedImage.width || 0}x{selectedImage.height || 0} • {Math.round((selectedImage.size || 0) / 1024)}KB
               </p>
               <p className="text-xs text-white/50">
                 {currentIndex + 1} of {images.length}

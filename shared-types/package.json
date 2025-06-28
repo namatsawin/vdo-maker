@@ -1,0 +1,17 @@
+{
+  "name": "@vdo-maker/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for VDO Maker frontend and backend",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.5.0"
+  }
+}

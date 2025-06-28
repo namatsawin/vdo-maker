@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from '@/utils/logger';
 import { ScriptGenerationRequest, ScriptSegment } from '@/types';
 
 class GeminiService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model: GenerativeModel;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -13,7 +13,7 @@ class GeminiService {
     }
     
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro', systemInstruction: `` });
   }
 
   async generateScript(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {

@@ -14,6 +14,7 @@ import { connectDatabase } from '@/config/database';
 import authRoutes from '@/routes/auth';
 import uploadRoutes from '@/routes/upload';
 import aiRoutes from '@/routes/ai';
+import projectRoutes from '@/routes/projects';
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,7 @@ app.get('/health', (req, res) => {
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 app.use(`/api/${API_VERSION}/ai`, aiRoutes);
+app.use(`/api/${API_VERSION}/projects`, projectRoutes);
 
 app.get(`/api/${API_VERSION}`, (req, res) => {
   res.json({
@@ -114,7 +116,7 @@ async function startServer() {
       logger.info(`🏥 Health Check: http://localhost:${PORT}/health`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
       logger.info(`📁 Uploads: ${uploadsDir}`);
-      logger.info(`🗄️ Database: SQLite connected`);
+      logger.info(`🗄️ Database: PostgreSQL connected`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
