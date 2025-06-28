@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, ArrowRight, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
@@ -29,19 +29,7 @@ export function ProjectWorkflow() {
 
   const project = projects.find(p => p.id === id);
 
-  useEffect(() => {
-    if (!project) {
-      navigate('/projects');
-      return;
-    }
-
-    // Only generate segments if project has no segments and we're on script stage
-    if (project.segments.length === 0 && stage === 'script') {
-      handleGenerateSegments();
-    }
-  }, [project, navigate, stage]);
-
-  const handleGenerateSegments = async () => {
+  const handleGenerateSegments = useCallback(async () => {
     if (!project) return;
     setIsGenerating(true);
     
@@ -73,7 +61,19 @@ export function ProjectWorkflow() {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [project, generateProjectScript, updateProject, addToast]);
+
+  useEffect(() => {
+    if (!project) {
+      navigate('/projects');
+      return;
+    }
+
+    // Only generate segments if project has no segments and we're on script stage
+    if (project.segments.length === 0 && stage === 'script') {
+      handleGenerateSegments();
+    }
+  }, [project, navigate, stage, handleGenerateSegments]);
 
   const handleSegmentUpdate = (segmentId: string, updates: Partial<VideoSegment>) => {
     if (!project) return;
