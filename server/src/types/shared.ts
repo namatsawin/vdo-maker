@@ -139,9 +139,16 @@ export interface UpdateSegmentRequest {
 
 // AI Service types
 export const GeminiModel = {
-  GEMINI_1_5_FLASH: 'gemini-1.5-flash',
-  GEMINI_1_5_FLASH_8B: 'gemini-1.5-flash-8b',
+  // Gemini 2.5 Series (Latest)
+  GEMINI_2_5_PRO: 'gemini-2.5-pro',
+  GEMINI_2_5_FLASH: 'gemini-2.5-flash', 
+  GEMINI_2_5_FLASH_8B: 'gemini-2.5-flash-8b',
+  
+  // Gemini 1.5 Series (Stable)
   GEMINI_1_5_PRO: 'gemini-1.5-pro',
+  GEMINI_1_5_FLASH: 'gemini-1.5-flash',
+  
+  // Legacy Models
   GEMINI_1_0_PRO: 'gemini-1.0-pro',
 } as const;
 

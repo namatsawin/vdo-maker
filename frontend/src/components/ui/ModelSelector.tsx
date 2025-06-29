@@ -21,16 +21,20 @@ interface ModelSelectorProps {
 }
 
 const getModelIcon = (modelValue: string) => {
-  if (modelValue.includes('flash-8b')) return <Zap className="h-4 w-4 text-yellow-500" />;
-  if (modelValue.includes('flash')) return <Clock className="h-4 w-4 text-blue-500" />;
-  if (modelValue.includes('pro')) return <Brain className="h-4 w-4 text-purple-500" />;
+  if (modelValue.includes('2.5-flash-8b')) return <Zap className="h-4 w-4 text-yellow-500" />;
+  if (modelValue.includes('2.5-flash')) return <Clock className="h-4 w-4 text-blue-500" />;
+  if (modelValue.includes('2.5-pro')) return <Brain className="h-4 w-4 text-emerald-500" />;
+  if (modelValue.includes('1.5-flash')) return <Clock className="h-4 w-4 text-indigo-500" />;
+  if (modelValue.includes('1.5-pro')) return <Brain className="h-4 w-4 text-purple-500" />;
   return <Cpu className="h-4 w-4 text-gray-500" />;
 };
 
 const getModelBadge = (modelValue: string) => {
-  if (modelValue.includes('flash-8b')) return <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">Fastest</span>;
-  if (modelValue.includes('flash')) return <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">Fast</span>;
-  if (modelValue.includes('1.5-pro')) return <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">Most Capable</span>;
+  if (modelValue.includes('2.5-flash-8b')) return <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">Ultra Fast</span>;
+  if (modelValue.includes('2.5-flash')) return <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">Fast & Smart</span>;
+  if (modelValue.includes('2.5-pro')) return <span className="px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-800">Latest & Best</span>;
+  if (modelValue.includes('1.5-flash')) return <span className="px-2 py-1 text-xs rounded bg-indigo-100 text-indigo-800">Balanced</span>;
+  if (modelValue.includes('1.5-pro')) return <span className="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">Capable</span>;
   if (modelValue.includes('1.0-pro')) return <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">Legacy</span>;
   return null;
 };

@@ -18,7 +18,7 @@ class GeminiService {
 
   async generateScript(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {
     try {
-      const model = request.model || GeminiModel.GEMINI_1_5_FLASH;
+      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
       
       const prompt = `
 Create a video script for the topic: "${request.title}"
@@ -83,7 +83,7 @@ Make sure the script flows naturally from one segment to the next, and the video
       // Note: Gemini doesn't have built-in TTS, so we'll simulate this
       // In a real implementation, you'd use Google Cloud Text-to-Speech API
       
-      const selectedModel = model || GeminiModel.GEMINI_1_5_FLASH;
+      const selectedModel = model || GeminiModel.GEMINI_2_5_FLASH;
       logger.info(`TTS generation requested for voice: ${voice}, model: ${selectedModel}`);
       
       // For MVP, we'll return a placeholder URL
@@ -104,7 +104,7 @@ Make sure the script flows naturally from one segment to the next, and the video
 
   async testConnection(model?: GeminiModel): Promise<{ status: string; model: string }> {
     try {
-      const selectedModel = model || GeminiModel.GEMINI_1_5_FLASH;
+      const selectedModel = model || GeminiModel.GEMINI_2_5_FLASH;
       
       // Test with a simple prompt
       const result = await this.genAI.models.generateContent({
@@ -129,32 +129,47 @@ Make sure the script flows naturally from one segment to the next, and the video
       logger.error('Gemini connection test failed:', error);
       return {
         status: 'error',
-        model: model || GeminiModel.GEMINI_1_5_FLASH
+        model: model || GeminiModel.GEMINI_2_5_FLASH
       };
     }
   }
 
   getAvailableModels(): { value: GeminiModel; label: string; description: string }[] {
     return [
+      // Gemini 2.5 Series (Latest & Recommended)
       {
-        value: GeminiModel.GEMINI_1_5_FLASH,
-        label: 'Gemini 1.5 Flash',
-        description: 'Fast and efficient for most tasks'
+        value: GeminiModel.GEMINI_2_5_PRO,
+        label: 'Gemini 2.5 Pro',
+        description: 'Most advanced model with enhanced reasoning, coding, and multimodal capabilities'
       },
       {
-        value: GeminiModel.GEMINI_1_5_FLASH_8B,
-        label: 'Gemini 1.5 Flash-8B',
-        description: 'Smaller, faster model for simple tasks'
+        value: GeminiModel.GEMINI_2_5_FLASH,
+        label: 'Gemini 2.5 Flash',
+        description: 'Fast and efficient with improved performance over 1.5 Flash'
       },
+      {
+        value: GeminiModel.GEMINI_2_5_FLASH_8B,
+        label: 'Gemini 2.5 Flash-8B',
+        description: 'Ultra-fast, cost-effective model for high-volume applications'
+      },
+      
+      // Gemini 1.5 Series (Stable)
       {
         value: GeminiModel.GEMINI_1_5_PRO,
         label: 'Gemini 1.5 Pro',
-        description: 'Most capable model for complex tasks'
+        description: 'Powerful model with large context window and multimodal capabilities'
       },
+      {
+        value: GeminiModel.GEMINI_1_5_FLASH,
+        label: 'Gemini 1.5 Flash',
+        description: 'Fast and efficient for most use cases with good performance'
+      },
+      
+      // Legacy Models
       {
         value: GeminiModel.GEMINI_1_0_PRO,
         label: 'Gemini 1.0 Pro',
-        description: 'Legacy model for compatibility'
+        description: 'Legacy model for backward compatibility'
       }
     ];
   }
