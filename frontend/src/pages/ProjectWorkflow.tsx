@@ -35,6 +35,7 @@ export function ProjectWorkflow() {
   const handleGenerateSegments = useCallback(async (request: SegmentGenerationRequest) => {
     if (!project) return;
     setIsGenerating(true);
+    setShowSegmentDialog(false);
     
     try {
       const response = await apiClient.post(`/projects/${project.id}/generate-segments`, request);
@@ -49,8 +50,6 @@ export function ProjectWorkflow() {
           title: 'Segments Generated',
           message: response.data.message || `Generated ${updatedProject.segments?.length || 0} segments`,
         });
-        
-        setShowSegmentDialog(false);
       }
     } catch (error: any) {
       console.error('Segment generation failed:', error);
@@ -107,40 +106,6 @@ export function ProjectWorkflow() {
       type: 'warning',
       title: 'Segment Rejected',
       message: `${stage.charAt(0).toUpperCase() + stage.slice(1)} segment has been rejected for revision`,
-    });
-  };
-
-  const handleAddSegment = () => {
-    if (!project) return;
-
-    const newSegment: VideoSegment = {
-      id: Math.random().toString(36).substr(2, 9),
-      script: 'New segment script. Click edit to customize this content.',
-      videoPrompt: 'Visual description for the new segment.',
-      duration: 10,
-      order: project.segments.length,
-      status: 'DRAFT',
-      scriptApprovalStatus: 'DRAFT' as ApprovalStatus,
-      imageApprovalStatus: 'DRAFT' as ApprovalStatus,
-      videoApprovalStatus: 'DRAFT' as ApprovalStatus,
-      audioApprovalStatus: 'DRAFT' as ApprovalStatus, // Keep for type compatibility
-      finalApprovalStatus: 'DRAFT' as ApprovalStatus,
-      images: [],
-      videos: [],
-      audios: [], // Keep for audio generation in script stage
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    updateProject(project.id, {
-      segments: [...project.segments, newSegment],
-      updatedAt: new Date().toISOString(),
-    });
-
-    addToast({
-      type: 'success',
-      title: 'Segment Added',
-      message: 'New segment has been added to your project',
     });
   };
 
@@ -259,30 +224,21 @@ export function ProjectWorkflow() {
     return <LoadingSpinner text="Loading project..." />;
   }
 
-  if (isGenerating) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">{project.name}</h1>
-          <p className="text-muted-foreground">Generating script segments...</p>
-        </div>
-        <LoadingSpinner text="AI is analyzing your story and creating video segments..." />
-      </div>
-    );
-  }
-
   const approvedCount = getApprovedCount();
   const totalCount = project.segments.length;
 
   const completedStages: WorkflowStage[] = [];
-  if (project.segments.every(s => s.scriptApprovalStatus === ApprovalStatus.APPROVED)) {
-    completedStages.push(WorkflowStage.SCRIPT_GENERATION);
-  }
-  if (project.segments.every(s => s.imageApprovalStatus === ApprovalStatus.APPROVED)) {
-    completedStages.push(WorkflowStage.IMAGE_GENERATION);
-  }
-  if (project.segments.every(s => s.videoApprovalStatus === ApprovalStatus.APPROVED)) {
-    completedStages.push(WorkflowStage.VIDEO_GENERATION);
+  
+  if (project.segments.length) {
+    if (project.segments.every(s => s.scriptApprovalStatus === ApprovalStatus.APPROVED)) {
+      completedStages.push(WorkflowStage.SCRIPT_GENERATION);
+    }
+    if (project.segments.every(s => s.imageApprovalStatus === ApprovalStatus.APPROVED)) {
+      completedStages.push(WorkflowStage.IMAGE_GENERATION);
+    }
+    if (project.segments.every(s => s.videoApprovalStatus === ApprovalStatus.APPROVED)) {
+      completedStages.push(WorkflowStage.VIDEO_GENERATION);
+    }
   }
 
   return (
@@ -351,19 +307,11 @@ export function ProjectWorkflow() {
         <CardContent>
           <div className="flex items-center justify-between mb-4">
             <div className="text-sm text-muted-foreground">
-              Progress: {approvedCount} of {totalCount} segments approved
+              Progress: {approvedCount} of {isGenerating ? '?' : totalCount} segments approved
             </div>
             <div className="flex space-x-2">
               {stage === 'script' && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddSegment}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Segment
-                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -378,7 +326,7 @@ export function ProjectWorkflow() {
             </div>
           </div>
 
-          {totalCount > 0 && (
+          {totalCount > 0 && !isGenerating && (
             <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
               <div 
                 className="bg-green-600 h-2 rounded-full transition-all duration-300"
@@ -389,57 +337,63 @@ export function ProjectWorkflow() {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {stage === 'final' ? (
-          <FinalAssembly 
-            segments={project.segments}
-            onComplete={() => {
-              updateProject(project.id, {
-                status: ProjectStatus.COMPLETED,
-                currentStage: WorkflowStage.COMPLETED,
-                updatedAt: new Date().toISOString(),
-              });
-              addToast({
-                type: 'success',
-                title: 'Project Completed!',
-                message: 'Your video project has been completed successfully.',
-              });
-            }}
-          />
-        ) : (
-          project.segments.map((segment, index) => (
-            <div key={segment.id} className="relative">
-              {stage === 'script' && (
-                <ScriptSegment
-                  segment={segment}
-                  index={index}
-                  onUpdate={handleSegmentUpdate}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-              )}
-              
-              {stage === 'images' && (
-                <ImageApproval
-                  segment={segment}
-                  index={index}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-              )}
+      { 
+      isGenerating ? 
+        <div className="space-y-4">
+          <LoadingSpinner text="AI is analyzing your story and creating video segments..." />
+        </div> : 
+        <div className="space-y-4">
+          {stage === 'final' ? (
+            <FinalAssembly 
+              segments={project.segments}
+              onComplete={() => {
+                updateProject(project.id, {
+                  status: ProjectStatus.COMPLETED,
+                  currentStage: WorkflowStage.COMPLETED,
+                  updatedAt: new Date().toISOString(),
+                });
+                addToast({
+                  type: 'success',
+                  title: 'Project Completed!',
+                  message: 'Your video project has been completed successfully.',
+                });
+              }}
+            />
+          ) : (
+            project.segments.map((segment, index) => (
+              <div key={segment.id} className="relative">
+                {stage === 'script' && (
+                  <ScriptSegment
+                    segment={segment}
+                    index={index}
+                    onUpdate={handleSegmentUpdate}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                  />
+                )}
+                
+                {stage === 'images' && (
+                  <ImageApproval
+                    segment={segment}
+                    index={index}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                  />
+                )}
 
-              {stage === 'videos' && (
-                <VideoApproval
-                  segment={segment}
-                  index={index}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                />
-              )}
-            </div>
-          ))
-        )}
-      </div>
+                {stage === 'videos' && (
+                  <VideoApproval
+                    segment={segment}
+                    index={index}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                  />
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      }
 
       {totalCount === 0 && stage === 'script' && (
         <Card>
@@ -459,7 +413,7 @@ export function ProjectWorkflow() {
         </Card>
       )}
 
-      {totalCount > 0 && stage !== 'final' && (
+      {totalCount > 0 && stage !== 'final' && !isGenerating && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">

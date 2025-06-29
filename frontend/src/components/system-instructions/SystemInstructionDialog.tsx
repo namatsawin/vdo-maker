@@ -103,7 +103,7 @@ export function SystemInstructionDialog({
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-hidden">
         <div className="flex items-center justify-between p-6 border-b">
           <h3 className="text-xl font-semibold">
             {instruction ? 'Edit System Instruction' : 'Create System Instruction'}
@@ -166,13 +166,14 @@ export function SystemInstructionDialog({
               placeholder="Enter the system instruction that will guide AI behavior..."
               rows={8}
               required
+              className='bg-white focus:z-20 focus:w-[80vw] focus:h-[80vh] focus:fixed focus:top-1/2 focus:left-1/2 focus:transform focus:-translate-x-1/2 focus:-translate-y-1/2'
             />
             <p className="text-sm text-gray-500 mt-1">
               This instruction will be used to guide the AI when generating video scripts.
             </p>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+          <div className="sticky flex items-center justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>

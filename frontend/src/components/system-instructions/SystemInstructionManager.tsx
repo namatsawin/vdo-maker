@@ -203,7 +203,6 @@ export function SystemInstructionManager({ isOpen, onClose }: SystemInstructionM
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(instruction)}
-                              disabled={instruction.isDefault}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
