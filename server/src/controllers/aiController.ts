@@ -209,6 +209,41 @@ export const getAvailableModels = async (req: Request, res: Response, next: Next
   }
 };
 
+export const generateIdeas = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { topic, model, count = 5 } = req.body;
+
+    if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
+      throw createError('Topic is required and must be a non-empty string', 400);
+    }
+
+    if (count < 1 || count > 10) {
+      throw createError('Count must be between 1 and 10', 400);
+    }
+
+    const ideas = await geminiService.generateVideoIdeas({
+      topic: topic.trim(),
+      model,
+      count
+    });
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        ideas,
+        topic: topic.trim(),
+        model: model || 'gemini-2.5-flash',
+        count: ideas.length,
+        generatedAt: new Date().toISOString()
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const testAIConnection = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const [geminiStatus, imagen4Status, klingStatus] = await Promise.all([

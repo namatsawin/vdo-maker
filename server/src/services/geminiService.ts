@@ -134,6 +134,110 @@ Make sure the script flows naturally from one segment to the next, and the video
     }
   }
 
+  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<any[]> {
+    try {
+      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
+      const count = request.count || 5;
+      
+      const prompt = `
+Generate ${count} creative video ideas for the topic: "${request.topic}"
+
+For each idea, provide:
+1. A catchy, engaging title
+2. A detailed description (2-3 sentences)
+3. Estimated duration (e.g., "2-3 minutes", "5-7 minutes")
+4. Target audience (e.g., "General audience", "Tech enthusiasts", "Students")
+5. Difficulty level (Easy, Medium, or Hard)
+
+Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
+
+Format your response as a JSON array with this structure:
+[
+  {
+    "id": "unique-id-1",
+    "title": "Engaging video title",
+    "description": "Detailed description of the video concept and what it will cover...",
+    "estimatedDuration": "3-5 minutes",
+    "targetAudience": "General audience",
+    "difficulty": "Medium"
+  }
+]
+
+Ensure each idea is unique, creative, and actionable for video production.
+`;
+
+      logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model}`);
+
+      const result = await this.genAI.models.generateContent({
+        model: model,
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }]
+        }]
+      });
+
+      // Extract text from the new response format
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      if (!text) {
+        throw new Error('No response received from Gemini');
+      }
+
+      // Parse the JSON response
+      let ideas;
+      try {
+        // Clean the response text to extract JSON
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+          throw new Error('No valid JSON array found in response');
+        }
+        
+        ideas = JSON.parse(jsonMatch[0]);
+        
+        // Validate and ensure each idea has required fields
+        ideas = ideas.map((idea: any, index: number) => ({
+          id: idea.id || `idea-${Date.now()}-${index}`,
+          title: idea.title || `Video Idea ${index + 1}`,
+          description: idea.description || 'No description provided',
+          estimatedDuration: idea.estimatedDuration || '3-5 minutes',
+          targetAudience: idea.targetAudience || 'General audience',
+          difficulty: ['Easy', 'Medium', 'Hard'].includes(idea.difficulty) ? idea.difficulty : 'Medium'
+        }));
+        
+      } catch (parseError) {
+        logger.error('Failed to parse ideas JSON:', parseError);
+        // Fallback: create structured ideas from text
+        ideas = this.createFallbackIdeas(text, count, request.topic);
+      }
+
+      logger.info(`Successfully generated ${ideas.length} video ideas`);
+      return ideas;
+      
+    } catch (error) {
+      logger.error('Video ideas generation failed:', error);
+      throw error;
+    }
+  }
+
+  private createFallbackIdeas(text: string, count: number, topic: string): any[] {
+    // Create fallback ideas if JSON parsing fails
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    const ideas = [];
+    
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      ideas.push({
+        id: `fallback-idea-${Date.now()}-${i}`,
+        title: `${topic} - Creative Approach ${i + 1}`,
+        description: lines[i] || `Explore ${topic} from a unique perspective with engaging storytelling and visual elements.`,
+        estimatedDuration: '3-5 minutes',
+        targetAudience: 'General audience',
+        difficulty: 'Medium'
+      });
+    }
+    
+    return ideas;
+  }
+
   getAvailableModels(): { value: GeminiModel; label: string; description: string }[] {
     return [
       // Gemini 2.5 Series (Latest & Recommended)

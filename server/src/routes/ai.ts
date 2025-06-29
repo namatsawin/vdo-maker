@@ -7,6 +7,7 @@ import {
   getVideoStatus,
   cancelVideoGeneration,
   generateTTS, 
+  generateIdeas,
   testAIConnection,
   getAvailableModels
 } from '@/controllers/aiController';
@@ -21,6 +22,9 @@ router.get('/models', getAvailableModels);
 
 // Script generation
 router.post('/script/generate', generateScript);
+
+// Video Ideas generation
+router.post('/generate-ideas', generateIdeas);
 
 // Image generation
 router.post('/image/generate', generateImage);

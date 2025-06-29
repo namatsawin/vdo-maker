@@ -5,10 +5,20 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { IdeaGenerationDialog } from '@/components/project/IdeaGenerationDialog';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { ProjectCreationForm } from '@/types';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb } from 'lucide-react';
+
+interface VideoIdea {
+  id: string;
+  title: string;
+  description: string;
+  estimatedDuration: string;
+  targetAudience: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+}
 
 export function ProjectCreateForm() {
   const navigate = useNavigate();
@@ -23,6 +33,21 @@ export function ProjectCreateForm() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<ProjectCreationForm>>({});
+  const [showIdeaDialog, setShowIdeaDialog] = useState(false);
+
+  const handleIdeaSelect = (idea: VideoIdea) => {
+    setFormData({
+      name: idea.title,
+      description: idea.description,
+      storyInput: `Create a ${idea.estimatedDuration} video about: ${idea.description}\n\nTarget Audience: ${idea.targetAudience}\nDifficulty: ${idea.difficulty}\n\nPlease develop this concept into an engaging video script with clear segments.`
+    });
+    
+    addToast({
+      type: 'success',
+      title: 'Idea Applied',
+      message: 'The AI-generated idea has been applied to your project form',
+    });
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ProjectCreationForm> = {};
@@ -90,116 +115,138 @@ export function ProjectCreateForm() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-500" />
-          AI Video Project
-        </CardTitle>
-        <CardDescription>
-          Provide details about your video project and let AI generate the script segments
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Project Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Project Name *</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="e.g., Introduction to AI Technology"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              className={errors.name ? 'border-red-500' : ''}
-              disabled={isSubmitting}
-            />
-            {errors.name && (
-              <p className="text-sm text-red-600">{errors.name}</p>
-            )}
-          </div>
-
-          {/* Project Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Project Description *</Label>
-            <Input
-              id="description"
-              type="text"
-              placeholder="Brief description of your video project"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              className={errors.description ? 'border-red-500' : ''}
-              disabled={isSubmitting}
-            />
-            {errors.description && (
-              <p className="text-sm text-red-600">{errors.description}</p>
-            )}
-          </div>
-
-          {/* Story Input */}
-          <div className="space-y-2">
-            <Label htmlFor="storyInput">Story & Content *</Label>
-            <Textarea
-              id="storyInput"
-              placeholder="Describe what you want your video to be about. Include key points, topics, or the story you want to tell. The more detail you provide, the better the AI can generate relevant script segments."
-              value={formData.storyInput}
-              onChange={(e) => handleInputChange('storyInput', e.target.value)}
-              className={`min-h-[120px] ${errors.storyInput ? 'border-red-500' : ''}`}
-              disabled={isSubmitting}
-            />
-            {errors.storyInput && (
-              <p className="text-sm text-red-600">{errors.storyInput}</p>
-            )}
-            <p className="text-sm text-gray-500">
-              {formData.storyInput.length}/500 characters (minimum 20)
-            </p>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex items-center justify-between pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/projects')}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating Project...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Create Project
-                </>
+    <>
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+            AI Video Project
+          </CardTitle>
+          <CardDescription>
+            Provide details about your video project and let AI generate the script segments
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Project Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Project Name *</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="e.g., Introduction to AI Technology"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className={errors.name ? 'border-red-500' : ''}
+                disabled={isSubmitting}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-600">{errors.name}</p>
               )}
-            </Button>
-          </div>
+            </div>
 
-          {/* AI Generation Info */}
-          {isSubmitting && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-blue-800">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="font-medium">AI is working...</span>
+            {/* Project Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Project Description *</Label>
+              <Input
+                id="description"
+                type="text"
+                placeholder="Brief description of your video project"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                className={errors.description ? 'border-red-500' : ''}
+                disabled={isSubmitting}
+              />
+              {errors.description && (
+                <p className="text-sm text-red-600">{errors.description}</p>
+              )}
+            </div>
+
+            {/* Story Input */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="storyInput">Story & Content *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowIdeaDialog(true)}
+                  className="flex items-center gap-2"
+                  disabled={isSubmitting}
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  Get AI Ideas
+                </Button>
               </div>
-              <p className="text-sm text-blue-700 mt-1">
-                Creating your project and generating script segments. This may take a few moments.
+              <Textarea
+                id="storyInput"
+                placeholder="Describe what you want your video to be about. Include key points, topics, or the story you want to tell. The more detail you provide, the better the AI can generate relevant script segments."
+                value={formData.storyInput}
+                onChange={(e) => handleInputChange('storyInput', e.target.value)}
+                className={`min-h-[120px] ${errors.storyInput ? 'border-red-500' : ''}`}
+                disabled={isSubmitting}
+              />
+              {errors.storyInput && (
+                <p className="text-sm text-red-600">{errors.storyInput}</p>
+              )}
+              <p className="text-sm text-gray-500">
+                {formData.storyInput.length}/500 characters (minimum 20)
               </p>
             </div>
-          )}
-        </form>
-      </CardContent>
-    </Card>
+
+            {/* Submit Button */}
+            <div className="flex items-center justify-between pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/projects')}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating Project...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Create Project
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* AI Generation Info */}
+            {isSubmitting && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="font-medium">AI is working...</span>
+                </div>
+                <p className="text-sm text-blue-700 mt-1">
+                  Creating your project and generating script segments. This may take a few moments.
+                </p>
+              </div>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Idea Generation Dialog */}
+      <IdeaGenerationDialog
+        isOpen={showIdeaDialog}
+        onClose={() => setShowIdeaDialog(false)}
+        onSelectIdea={handleIdeaSelect}
+      />
+    </>
   );
 }
