@@ -2,50 +2,31 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { logger } from '@/utils/logger';
 import { ScriptGenerationRequest, ScriptSegment, GeminiModel } from '@/types';
 
-// JSON Schema for structured output using proper Type enum
+// JSON Schema for video ideas aligned with ProjectCreationForm
 const VIDEO_IDEAS_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    ideas: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: {
-            type: Type.STRING,
-            description: "Unique identifier for the idea"
-          },
-          title: {
-            type: Type.STRING,
-            description: "Catchy, engaging video title"
-          },
-          description: {
-            type: Type.STRING,
-            description: "Detailed 2-3 sentence description of the video concept"
-          },
-          estimatedDuration: {
-            type: Type.STRING,
-            description: "Estimated video duration (e.g., '3-5 minutes', '2-3 minutes')"
-          },
-          targetAudience: {
-            type: Type.STRING,
-            description: "Target audience for the video"
-          },
-          difficulty: {
-            type: Type.STRING,
-            enum: ["Easy", "Medium", "Hard"],
-            description: "Production difficulty level"
-          }
-        },
-        required: ["id", "title", "description", "estimatedDuration", "targetAudience", "difficulty"],
-        propertyOrdering: ["id", "title", "description", "estimatedDuration", "targetAudience", "difficulty"]
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      title: {
+        type: Type.STRING,
+        description: "Video title that will be used as project name"
+      },
+      description: {
+        type: Type.STRING,
+        description: "Brief description of the video project"
+      },
+      story: {
+        type: Type.STRING,
+        description: "Detailed story content and narrative for the video"
       }
-    }
-  },
-  required: ["ideas"],
-  propertyOrdering: ["ideas"]
+    },
+    required: ["title", "description", "story"],
+    propertyOrdering: ["title", "description", "story"]
+  }
 };
 
+// JSON Schema for script segments
 const SCRIPT_SEGMENTS_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -91,10 +72,9 @@ class GeminiService {
   }
 
   async generateScript(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {
-    try {
-      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
-      
-      const prompt = `
+    const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
+    
+    const prompt = `
 Create a video script for the topic: "${request.title}"
 ${request.description ? `Description: ${request.description}` : ''}
 
@@ -107,8 +87,9 @@ For each segment, provide:
 Make sure the script flows naturally from one segment to the next, and the video prompts are detailed enough for AI video generation.
 `;
 
-      logger.info(`Generating script using model: ${model} with structured output`);
+    logger.info(`Generating script using model: ${model} with structured output`);
 
+    try {
       const result = await this.genAI.models.generateContent({
         model: model,
         contents: prompt,
@@ -118,7 +99,6 @@ Make sure the script flows naturally from one segment to the next, and the video
         }
       });
 
-      // Extract structured response
       const text = result.text || '';
       
       if (!text) {
@@ -141,70 +121,7 @@ Make sure the script flows naturally from one segment to the next, and the video
       return segments;
       
     } catch (error) {
-      logger.error('Script generation with structured output failed:', error);
-      // Fallback to original method if structured output fails
-      return this.generateScriptFallback(request);
-    }
-  }
-
-  private async generateScriptFallback(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {
-    try {
-      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
-      
-      const prompt = `
-Create a video script for the topic: "${request.title}"
-${request.description ? `Description: ${request.description}` : ''}
-
-Please generate a script divided into 3-5 segments. Each segment should be 15-30 seconds long when spoken.
-
-Format your response as a JSON array with this structure:
-[
-  {
-    "order": 1,
-    "script": "The spoken content for this segment...",
-    "videoPrompt": "Visual description: A detailed description of what should be shown in the video..."
-  }
-]
-
-Make sure the script flows naturally from one segment to the next, and the video prompts are detailed enough for AI video generation.
-`;
-
-      logger.info(`Using fallback method for script generation`);
-
-      const result = await this.genAI.models.generateContent({
-        model: model,
-        contents: prompt
-      });
-
-      const text = result.text;
-
-      logger.info('Gemini script generation response received');
-
-      if (!text) {
-        throw new Error('No response received from Gemini fallback');
-      }
-
-      // Try to parse JSON from the response
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error('Could not extract JSON from Gemini response');
-      }
-
-      const segments: ScriptSegment[] = JSON.parse(jsonMatch[0]);
-      
-      // Validate and clean up segments
-      return segments.map((segment, index) => ({
-        id: `segment-${segment.order || index + 1}`,
-        order: segment.order || index + 1,
-        script: segment.script || '',
-        videoPrompt: segment.videoPrompt || '',
-        status: 'pending' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }));
-      
-    } catch (error) {
-      logger.error('Fallback script generation failed:', error);
+      logger.error('Script generation failed:', error);
       throw error;
     }
   }
@@ -262,28 +179,33 @@ Make sure the script flows naturally from one segment to the next, and the video
     }
   }
 
-  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<any[]> {
-    try {
-      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
-      const count = request.count || 5;
-      
-      const prompt = `
+  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<Array<{ title: string; description: string; story: string }>> {
+    const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
+    const count = request.count || 5;
+    
+    const prompt = `
 Generate ${count} creative video ideas for the topic: "${request.topic}"
 
 For each idea, provide:
-1. A catchy, engaging title
-2. A detailed description (2-3 sentences)
-3. Estimated duration (e.g., "2-3 minutes", "5-7 minutes")
-4. Target audience (e.g., "General audience", "Tech enthusiasts", "Students")
-5. Difficulty level (Easy, Medium, or Hard)
+1. A catchy, engaging title (will be used as project name)
+2. A brief description (1-2 sentences describing the video concept)
+3. A detailed story (comprehensive narrative content for the video, including key points, structure, and what the video will cover)
 
 Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
+
+The story should be detailed enough to serve as the foundation for script generation, including:
+- Main narrative arc
+- Key points to cover
+- Visual elements to include
+- Target audience considerations
+- Tone and style suggestions
 
 Ensure each idea is unique, creative, and actionable for video production.
 `;
 
-      logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model} with structured output`);
+    logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model} with structured output`);
 
+    try {
       const result = await this.genAI.models.generateContent({
         model: model,
         contents: prompt,
@@ -293,120 +215,22 @@ Ensure each idea is unique, creative, and actionable for video production.
         }
       });
 
-      // Extract structured response
       const text = result.text || '';
       
       if (!text) {
         throw new Error('No response received from Gemini');
       }
 
-      // Parse the structured JSON response
-      const response = JSON.parse(text);
-      const ideas = response.ideas.map((idea: any, index: number) => ({
-        id: idea.id || `idea-${Date.now()}-${index}`,
-        title: idea.title,
-        description: idea.description,
-        estimatedDuration: idea.estimatedDuration,
-        targetAudience: idea.targetAudience,
-        difficulty: idea.difficulty
-      }));
+      // Parse the structured JSON response - it's already an array
+      const ideas: Array<{ title: string; description: string; story: string }> = JSON.parse(text);
 
       logger.info(`Successfully generated ${ideas.length} video ideas with structured output`);
       return ideas;
       
     } catch (error) {
-      logger.error('Video ideas generation with structured output failed:', error);
-      // Fallback to original method if structured output fails
-      return this.generateVideoIdeasFallback(request);
-    }
-  }
-
-  private async generateVideoIdeasFallback(request: { topic: string; model?: GeminiModel; count?: number }): Promise<any[]> {
-    try {
-      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
-      const count = request.count || 5;
-      
-      const prompt = `
-Generate ${count} creative video ideas for the topic: "${request.topic}"
-
-Format your response as a JSON array with this structure:
-[
-  {
-    "id": "unique-id-1",
-    "title": "Engaging video title",
-    "description": "Detailed description of the video concept and what it will cover...",
-    "estimatedDuration": "3-5 minutes",
-    "targetAudience": "General audience",
-    "difficulty": "Medium"
-  }
-]
-`;
-
-      logger.info(`Using fallback method for video ideas generation`);
-
-      const result = await this.genAI.models.generateContent({
-        model: model,
-        contents: prompt
-      });
-
-      const text = result.text || '';
-      
-      if (!text) {
-        throw new Error('No response received from Gemini');
-      }
-
-      // Parse the JSON response
-      let ideas;
-      try {
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-          throw new Error('No valid JSON array found in response');
-        }
-        
-        ideas = JSON.parse(jsonMatch[0]);
-        
-        // Validate and ensure each idea has required fields
-        ideas = ideas.map((idea: any, index: number) => ({
-          id: idea.id || `idea-${Date.now()}-${index}`,
-          title: idea.title || `Video Idea ${index + 1}`,
-          description: idea.description || 'No description provided',
-          estimatedDuration: idea.estimatedDuration || '3-5 minutes',
-          targetAudience: idea.targetAudience || 'General audience',
-          difficulty: ['Easy', 'Medium', 'Hard'].includes(idea.difficulty) ? idea.difficulty : 'Medium'
-        }));
-        
-      } catch (parseError) {
-        logger.error('Failed to parse ideas JSON:', parseError);
-        // Create structured ideas from text
-        ideas = this.createFallbackIdeas(text, count, request.topic);
-      }
-
-      logger.info(`Successfully generated ${ideas.length} video ideas using fallback method`);
-      return ideas;
-      
-    } catch (error) {
-      logger.error('Fallback video ideas generation failed:', error);
+      logger.error('Video ideas generation failed:', error);
       throw error;
     }
-  }
-
-  private createFallbackIdeas(text: string, count: number, topic: string): any[] {
-    // Create fallback ideas if JSON parsing fails
-    const lines = text.split('\n').filter(line => line.trim().length > 0);
-    const ideas = [];
-    
-    for (let i = 0; i < Math.min(count, 5); i++) {
-      ideas.push({
-        id: `fallback-idea-${Date.now()}-${i}`,
-        title: `${topic} - Creative Approach ${i + 1}`,
-        description: lines[i] || `Explore ${topic} from a unique perspective with engaging storytelling and visual elements.`,
-        estimatedDuration: '3-5 minutes',
-        targetAudience: 'General audience',
-        difficulty: 'Medium'
-      });
-    }
-    
-    return ideas;
   }
 
   getAvailableModels(): { value: GeminiModel; label: string; description: string }[] {

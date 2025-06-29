@@ -12,12 +12,9 @@ import type { ProjectCreationForm } from '@/types';
 import { Loader2, Sparkles, Lightbulb } from 'lucide-react';
 
 interface VideoIdea {
-  id: string;
   title: string;
   description: string;
-  estimatedDuration: string;
-  targetAudience: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  story: string;
 }
 
 export function ProjectCreateForm() {
@@ -39,7 +36,7 @@ export function ProjectCreateForm() {
     setFormData({
       name: idea.title,
       description: idea.description,
-      storyInput: `Create a ${idea.estimatedDuration} video about: ${idea.description}\n\nTarget Audience: ${idea.targetAudience}\nDifficulty: ${idea.difficulty}\n\nPlease develop this concept into an engaging video script with clear segments.`
+      storyInput: idea.story
     });
     
     addToast({

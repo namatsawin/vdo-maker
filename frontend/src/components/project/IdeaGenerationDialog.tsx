@@ -9,12 +9,9 @@ import { apiClient } from '@/lib/api';
 import { GeminiModel } from '@/types/shared';
 
 interface VideoIdea {
-  id: string;
   title: string;
   description: string;
-  estimatedDuration: string;
-  targetAudience: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  story: string;
 }
 
 interface IdeaGenerationDialogProps {
@@ -47,7 +44,7 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
       });
 
       if (response.data.success) {
-        setIdeas(response.data.ideas);
+        setIdeas(response.data.data.ideas);
       } else {
         setError(response.data.error || 'Failed to generate ideas');
       }
@@ -61,15 +58,6 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
   const handleSelectIdea = (idea: VideoIdea) => {
     onSelectIdea(idea);
     onClose();
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy': return 'bg-green-100 text-green-800';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800';
-      case 'Hard': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   if (!isOpen) return null;
@@ -156,22 +144,17 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
               </h3>
               
               <div className="grid gap-4">
-                {ideas.map((idea) => (
-                  <Card key={idea.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                {ideas.map((idea, index) => (
+                  <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">{idea.title}</CardTitle>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(idea.difficulty)}`}>
-                          {idea.difficulty}
-                        </span>
-                      </div>
+                      <CardTitle className="text-lg">{idea.title}</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <p className="text-gray-600 mb-3">{idea.description}</p>
+                      <p className="text-gray-600 mb-3 font-medium">{idea.description}</p>
                       
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                        <span>Duration: {idea.estimatedDuration}</span>
-                        <span>Audience: {idea.targetAudience}</span>
+                      <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Story Content:</h4>
+                        <p className="text-sm text-gray-600 line-clamp-3">{idea.story}</p>
                       </div>
 
                       <Button
