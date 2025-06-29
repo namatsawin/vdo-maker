@@ -46,7 +46,9 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
 
 
       if (response.success) {
-        setIdeas(response.data?.ideas ?? []);
+        const ideas= response.data?.ideas ?? []
+
+        setIdeas((prevIdeas) => [...prevIdeas, ...ideas]);
       } else {
         setError(response.data.error || 'Failed to generate ideas');
       }
@@ -95,7 +97,6 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="e.g., เหตุการณ์ปะหลาด, สัตว์โลก, เทคโนโลยีอนาคต"
                 className="mt-1"
-                onKeyPress={(e) => e.key === 'Enter' && generateIdeas()}
               />
               <p className="text-sm text-gray-500 mt-1">
                 Enter a topic in any language to generate creative video ideas
@@ -163,9 +164,8 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                     <CardContent className="pt-0">
                       <p className="text-gray-600 mb-3 font-medium">{idea.description}</p>
                       
-                      <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Story Content:</h4>
-                        <p className="text-sm text-gray-600 line-clamp-3">{idea.story}</p>
+                      <div className="bg-gray-50 rounded-lg p-3 mb-4 overflow-y-auto max-h-32">
+                        <p className="text-sm text-gray-600">{idea.story}</p>
                       </div>
 
                       <Button

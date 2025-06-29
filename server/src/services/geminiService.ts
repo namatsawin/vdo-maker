@@ -196,11 +196,27 @@ For each idea, provide:
 3. A detailed story (comprehensive narrative content for the video, including key points, structure, and what the video will cover)
 4. Fact verification (determine if the story content is based on verifiable facts and research)
 
+IMPORTANT: Make each idea VERY SPECIFIC and focused on particular subjects, phenomena, or cases rather than broad topics.
+
+Examples of specific ideas:
+- Instead of "mysterious ships" → "เรือแม่รี่เซเลซ: ปริศนาเรือผีที่หายไปในมหาสมุทร"
+- Instead of "simulation theory" → "เราอยู่ในโลกจำลองจริงไหม: ทฤษฎีที่นักวิทยาศาสตร์เชื่อ"
+- Instead of "strange sounds" → "เสียง Taos Hum: เสียงลึกลับที่ไม่มีใครอธิบายได้"
+- Instead of "ancient mysteries" → "พีระมิดใต้น้ำโยนากุนิ: สิ่งก่อสร้างโบราณใต้ทะเลญี่ปุ่น"
+- Instead of "space phenomena" → "สัญญาณ WOW!: ข้อความจากต่างดาวที่หายไปตลอดกาล"
+
+Focus on:
+- Specific historical events, people, or places
+- Particular scientific phenomena or discoveries
+- Individual mysteries, cases, or incidents
+- Named locations, objects, or concepts
+- Unique cultural or natural phenomena
+
 Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
 
 The story should be detailed enough to serve as the foundation for script generation, including:
-- Main narrative arc
-- Key points to cover
+- Main narrative arc with specific details
+- Key points to cover with concrete examples
 - Visual elements to include
 - Target audience considerations
 - Tone and style suggestions
@@ -211,13 +227,7 @@ For fact verification (isFactBased):
 - Consider the nature of the content: documentaries, educational content, news analysis = likely fact-based
 - Creative stories, fictional narratives, artistic interpretations = likely not fact-based
 
-Examples:
-- "The History of Ancient Rome" → isFactBased: true (historical documentation)
-- "What If Dinosaurs Never Went Extinct" → isFactBased: false (speculative fiction)
-- "Climate Change Effects on Wildlife" → isFactBased: true (scientific research)
-- "A Day in the Life of a Superhero" → isFactBased: false (fictional narrative)
-
-Ensure each idea is unique, creative, and actionable for video production.
+Ensure each idea is unique, creative, specific, and actionable for video production.
 `;
 
     logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model} with structured output`);
