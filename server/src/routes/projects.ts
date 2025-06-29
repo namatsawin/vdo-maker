@@ -7,7 +7,8 @@ import {
   updateProject,
   deleteProject,
   updateSegment,
-  generateSegmentAudio
+  generateSegmentAudio,
+  selectSegmentAudio
 } from '../controllers/projectController';
 
 const router = Router();
@@ -25,5 +26,6 @@ router.delete('/:id', deleteProject);
 // Segment operations
 router.put('/:projectId/segments/:segmentId', updateSegment);
 router.post('/:projectId/segments/:segmentId/audio', generateSegmentAudio);
+router.put('/:id/segments/:segmentId/audio/:audioId/select', selectSegmentAudio);
 
 export default router;

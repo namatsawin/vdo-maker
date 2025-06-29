@@ -1,7 +1,7 @@
-import { Response } from 'express';
+import { Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
-import { AuthenticatedRequest, CreateProjectRequest, UpdateProjectRequest, UpdateSegmentRequest, ProjectStatus, WorkflowStage } from '../types';
+import { AuthenticatedRequest, CreateProjectRequest, UpdateProjectRequest, UpdateSegmentRequest, ProjectStatus, WorkflowStage, ApiResponse } from '../types';
 import { mapProject, mapVideoSegment, calculateCurrentStage, calculateProjectStatus } from '../utils/typeMappers';
 import { generateScript } from './aiController';
 
@@ -514,12 +514,24 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
           voice,
           status: 'DRAFT',
           duration: audioResult.data.duration || null,
+          isSelected: true, // New audio is selected by default
           metadata: JSON.stringify({
             model,
             voice,
             generatedAt: new Date().toISOString()
           }),
           segmentId: segment.id
+        }
+      });
+
+      // Unselect other audio files for this segment
+      await prisma.audio.updateMany({
+        where: {
+          segmentId: segment.id,
+          id: { not: audio.id }
+        },
+        data: {
+          isSelected: false
         }
       });
 
@@ -562,6 +574,80 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
         message: error instanceof Error ? error.message : 'Failed to generate audio'
       }
     });
+  }
+};
+
+// Select audio for segment
+export const selectSegmentAudio = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const { id: projectId, segmentId, audioId } = req.params;
+
+    // Verify project exists and user has access
+    const project = await prisma.project.findUnique({
+      where: { 
+        id: projectId,
+        userId: userId
+      }
+    });
+
+    if (!project) {
+      throw createError('Project not found', 404);
+    }
+
+    // Verify segment exists
+    const segment = await prisma.segment.findUnique({
+      where: { 
+        id: segmentId,
+        projectId: projectId
+      }
+    });
+
+    if (!segment) {
+      throw createError('Segment not found', 404);
+    }
+
+    // Verify audio exists and belongs to this segment
+    const audio = await prisma.audio.findUnique({
+      where: { 
+        id: audioId,
+        segmentId: segmentId
+      }
+    });
+
+    if (!audio) {
+      throw createError('Audio not found', 404);
+    }
+
+    // Unselect all audio files for this segment
+    await prisma.audio.updateMany({
+      where: {
+        segmentId: segmentId
+      },
+      data: {
+        isSelected: false
+      }
+    });
+
+    // Select the specified audio
+    const selectedAudio = await prisma.audio.update({
+      where: { id: audioId },
+      data: { isSelected: true }
+    });
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        audioId: selectedAudio.id,
+        segmentId: segmentId,
+        isSelected: true,
+        message: 'Audio selection updated successfully'
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
   }
 };
 

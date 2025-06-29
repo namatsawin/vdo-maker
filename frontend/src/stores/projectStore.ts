@@ -31,6 +31,7 @@ interface ProjectActions {
   generateSegmentImage: (segmentId: string, prompt: string, aspectRatio?: string) => Promise<string>;
   generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string) => Promise<{ taskId: string; videoUrl?: string }>;
   generateSegmentAudio: (segmentId: string, text: string, voice?: string, model?: string) => Promise<string>;
+  selectSegmentAudio: (projectId: string, segmentId: string, audioId: string) => Promise<void>;
 }
 
 export const useProjectStore = create<ProjectState & ProjectActions>()((set) => ({
@@ -292,6 +293,59 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
       return result.audioUrl;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Audio generation failed';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  // Select audio for segment
+  selectSegmentAudio: async (projectId: string, segmentId: string, audioId: string) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      await projectService.selectSegmentAudio(projectId, segmentId, audioId);
+
+      // Update the local state to reflect the selection
+      set((state) => ({
+        projects: state.projects.map(p => 
+          p.id === projectId
+            ? {
+                ...p,
+                segments: p.segments.map(s => 
+                  s.id === segmentId
+                    ? {
+                        ...s,
+                        audios: s.audios.map(a => ({
+                          ...a,
+                          isSelected: a.id === audioId
+                        }))
+                      }
+                    : s
+                )
+              }
+            : p
+        ),
+        currentProject: state.currentProject?.id === projectId
+          ? {
+              ...state.currentProject,
+              segments: state.currentProject.segments.map(s => 
+                s.id === segmentId
+                  ? {
+                      ...s,
+                      audios: s.audios.map(a => ({
+                        ...a,
+                        isSelected: a.id === audioId
+                      }))
+                    }
+                  : s
+              )
+            }
+          : state.currentProject,
+        isLoading: false
+      }));
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to select audio';
       set({ error: errorMessage, isLoading: false });
       throw error;
     }

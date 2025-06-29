@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/SimpleSelect';
 import { AudioPlayer } from '@/components/media/AudioPlayer';
 import type { VideoSegment, ApprovalStatus, MediaAsset } from '@/types';
 import { isApprovalStatus, convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
@@ -35,7 +36,7 @@ export function ScriptSegment({
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('kore');
 
-  const { generateSegmentAudio } = useProjectStore();
+  const { generateSegmentAudio, selectSegmentAudio } = useProjectStore();
   const { addToast } = useUIStore();
 
   const currentStatus = segment.scriptApprovalStatus;
@@ -97,6 +98,31 @@ export function ScriptSegment({
       });
     } finally {
       setIsGeneratingAudio(false);
+    }
+  };
+
+  const handleAudioSelection = async (audioId: string) => {
+    try {
+      // Get the project ID from the current project in the store
+      const currentProject = useProjectStore.getState().currentProject;
+      if (!currentProject) {
+        throw new Error('No current project found');
+      }
+
+      await selectSegmentAudio(currentProject.id, segment.id, audioId);
+      
+      addToast({
+        type: 'success',
+        title: 'Audio Selected',
+        message: 'Audio version has been selected successfully',
+      });
+    } catch (error) {
+      console.error('Audio selection failed:', error);
+      addToast({
+        type: 'error',
+        title: 'Selection Failed',
+        message: 'Failed to select audio. Please try again.',
+      });
     }
   };
 
@@ -258,7 +284,33 @@ export function ScriptSegment({
               </div>
               
               {segment.audios && segment.audios.length > 0 ? (
-                <AudioPlayer audio={segment.audios[0]} compact={true} />
+                <div className="space-y-3">
+                  {segment.audios.length > 1 && (
+                    <div className="flex items-center space-x-2">
+                      <Label className="text-sm font-medium">Audio Version:</Label>
+                      <Select
+                        value={segment.audios.find(a => a.isSelected)?.id || segment.audios[0]?.id}
+                        onValueChange={(audioId) => handleAudioSelection(audioId)}
+                      >
+                        <SelectTrigger className="w-48">
+                          <SelectValue placeholder="Select audio version" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {segment.audios.map((audio, index) => (
+                            <SelectItem key={audio.id} value={audio.id}>
+                              {audio.voice ? `${audio.voice} Voice` : `Version ${index + 1}`}
+                              {audio.isSelected && ' (Selected)'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <AudioPlayer 
+                    audio={segment.audios.find(a => a.isSelected) || segment.audios[0]} 
+                    compact={true} 
+                  />
+                </div>
               ) : (
                 <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded border border-dashed">
                   No audio generated yet. Click "Generate Audio" to preview how this script sounds.

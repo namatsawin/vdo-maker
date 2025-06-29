@@ -109,6 +109,7 @@ model Audio {
   status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   duration  Int?     // Duration in seconds
   metadata  String?  // JSON string for additional data
+  isSelected Boolean @default(false) // Identifies which audio is currently selected
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   

@@ -102,6 +102,9 @@ const mapAudioAsset = (audio: Audio): MediaAsset => {
     status: audio.status as ApprovalStatus,
     metadata,
     duration: audio.duration || undefined,
+    isSelected: audio.isSelected || false, // New field for audio selection
+    voice: audio.voice, // Voice type used for generation
+    text: audio.text, // Text that was converted to speech
     createdAt: audio.createdAt.toISOString(),
     updatedAt: audio.updatedAt.toISOString(),
   };

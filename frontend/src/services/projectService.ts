@@ -69,6 +69,14 @@ class ProjectService {
       throw new Error(response.error?.message || 'Failed to delete project');
     }
   }
+
+  // Select audio for segment
+  async selectSegmentAudio(projectId: string, segmentId: string, audioId: string): Promise<void> {
+    const response = await apiClient.put(`/projects/${projectId}/segments/${segmentId}/audio/${audioId}/select`);
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to select audio');
+    }
+  }
 }
 
 export const projectService = new ProjectService();

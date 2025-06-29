@@ -51,6 +51,9 @@ export interface MediaAsset {
   status: ApprovalStatus;
   metadata?: Record<string, any>;
   duration?: number; // for video/audio in seconds
+  isSelected?: boolean; // For audio selection (multiple audio files per segment)
+  voice?: string; // For audio files - voice type used
+  text?: string; // For audio files - text that was converted to speech
   createdAt: string;
   updatedAt: string;
 }
