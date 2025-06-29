@@ -209,6 +209,24 @@ export const getAvailableModels = async (req: Request, res: Response, next: Next
   }
 };
 
+export const getAvailableVoices = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const voices = geminiService.getAvailableVoices();
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        voices,
+        retrievedAt: new Date().toISOString()
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const generateIdeas = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { topic, model, count = 5 } = req.body;

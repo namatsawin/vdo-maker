@@ -101,7 +101,7 @@ export const getFileInfo = async (req: Request, res: Response, next: NextFunctio
       throw createError('Filename is required', 400);
     }
 
-    const filePath = path.join(__dirname, '../../uploads', filename);
+    const filePath = path.join(process.cwd(), 'uploads', filename);
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {

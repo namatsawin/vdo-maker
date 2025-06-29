@@ -9,7 +9,6 @@ import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 import { ScriptSegment } from '@/components/workflow/ScriptSegment';
 import { ImageApproval } from '@/components/workflow/ImageApproval';
 import { VideoApproval } from '@/components/workflow/VideoApproval';
-import { AudioApproval } from '@/components/workflow/AudioApproval';
 import { FinalAssembly } from '@/components/workflow/FinalAssembly';
 import { WorkflowProgress } from '@/components/workflow/WorkflowProgress';
 import { ScriptGenerationDialog } from '@/components/workflow/ScriptGenerationDialog';
@@ -91,7 +90,6 @@ export function ProjectWorkflow() {
       case 'script': return 'scriptApprovalStatus';
       case 'images': return 'imageApprovalStatus';
       case 'videos': return 'videoApprovalStatus';
-      case 'audio': return 'audioApprovalStatus';
       default: return 'scriptApprovalStatus';
     }
   };
@@ -170,11 +168,11 @@ export function ProjectWorkflow() {
       scriptApprovalStatus: 'DRAFT' as ApprovalStatus,
       imageApprovalStatus: 'DRAFT' as ApprovalStatus,
       videoApprovalStatus: 'DRAFT' as ApprovalStatus,
-      audioApprovalStatus: 'DRAFT' as ApprovalStatus,
+      audioApprovalStatus: 'DRAFT' as ApprovalStatus, // Keep for type compatibility
       finalApprovalStatus: 'DRAFT' as ApprovalStatus,
       images: [],
       videos: [],
-      audios: [],
+      audios: [], // Keep for audio generation in script stage
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -207,10 +205,6 @@ export function ProjectWorkflow() {
         return project.segments.every(segment => 
           isApprovalStatus(segment.videoApprovalStatus, 'approved')
         );
-      case 'audio':
-        return project.segments.every(segment => 
-          isApprovalStatus(segment.audioApprovalStatus, 'approved')
-        );
       default:
         return false;
     }
@@ -235,14 +229,9 @@ export function ProjectWorkflow() {
         message = 'All images approved. Moving to video generation.';
         break;
       case 'videos':
-        nextStage = WorkflowStage.AUDIO_GENERATION;
-        nextUrl = `audio`;
-        message = 'All videos approved. Moving to audio generation.';
-        break;
-      case 'audio':
         nextStage = WorkflowStage.FINAL_ASSEMBLY;
         nextUrl = `final`;
-        message = 'All audio approved. Moving to final assembly.';
+        message = 'All videos approved. Moving to final assembly.';
         break;
       default:
         return;
@@ -268,8 +257,7 @@ export function ProjectWorkflow() {
     const backStages: Record<string, string> = {
       'images': 'script',
       'videos': 'images',
-      'audio': 'videos',
-      'final': 'audio',
+      'final': 'videos',
     };
     
     const backStage = backStages[stage];
@@ -281,10 +269,9 @@ export function ProjectWorkflow() {
 
   const getStageTitle = () => {
     switch (stage) {
-      case 'script': return 'Script Generation & Approval';
+      case 'script': return 'Script Generation & Audio Preview';
       case 'images': return 'Image Generation & Approval';
       case 'videos': return 'Video Generation & Approval';
-      case 'audio': return 'Audio Generation & Approval';
       case 'final': return 'Final Assembly & Export';
       default: return 'Workflow';
     }
@@ -292,10 +279,9 @@ export function ProjectWorkflow() {
 
   const getStageDescription = () => {
     switch (stage) {
-      case 'script': return 'Review and approve the AI-generated script segments. You can edit the content or regenerate segments as needed.';
+      case 'script': return 'Review and approve the AI-generated script segments. Generate audio previews to hear how each segment sounds.';
       case 'images': return 'Review the generated images for each segment. These will be used as the first frame for video generation.';
       case 'videos': return 'Review the generated videos for each segment.';
-      case 'audio': return 'Review the generated audio narration for each segment.';
       case 'final': return 'Review the final assembled video and export it.';
       default: return 'Manage your project workflow.';
     }
@@ -309,8 +295,6 @@ export function ProjectWorkflow() {
         return project?.segments.filter(s => s.imageApprovalStatus === ApprovalStatus.APPROVED).length || 0;
       case 'videos':
         return project?.segments.filter(s => s.videoApprovalStatus === ApprovalStatus.APPROVED).length || 0;
-      case 'audio':
-        return project?.segments.filter(s => s.audioApprovalStatus === ApprovalStatus.APPROVED).length || 0;
       default:
         return 0;
     }
@@ -344,9 +328,6 @@ export function ProjectWorkflow() {
   }
   if (project.segments.every(s => s.videoApprovalStatus === ApprovalStatus.APPROVED)) {
     completedStages.push(WorkflowStage.VIDEO_GENERATION);
-  }
-  if (project.segments.every(s => s.audioApprovalStatus === ApprovalStatus.APPROVED)) {
-    completedStages.push(WorkflowStage.AUDIO_GENERATION);
   }
 
   return (
@@ -385,13 +366,6 @@ export function ProjectWorkflow() {
               onClick={() => setSearchParams({ stage: 'videos' })}
             >
               Videos
-            </Button>
-            <Button
-              variant={stage === 'audio' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSearchParams({ stage: 'audio' })}
-            >
-              Audio
             </Button>
             <Button
               variant={stage === 'final' ? 'default' : 'outline'}
@@ -518,17 +492,6 @@ export function ProjectWorkflow() {
                   isRegenerating={isRegenerating === segment.id}
                 />
               )}
-
-              {stage === 'audio' && (
-                <AudioApproval
-                  segment={segment}
-                  index={index}
-                  onApprove={handleApprove}
-                  onReject={handleReject}
-                  onRegenerate={handleRegenerate}
-                  isRegenerating={isRegenerating === segment.id}
-                />
-              )}
             </div>
           ))
         )}
@@ -565,8 +528,7 @@ export function ProjectWorkflow() {
               >
                 {stage === 'script' ? 'Proceed to Images' : 
                  stage === 'images' ? 'Proceed to Videos' : 
-                 stage === 'videos' ? 'Proceed to Audio' :
-                 stage === 'audio' ? 'Proceed to Final Assembly' :
+                 stage === 'videos' ? 'Proceed to Final Assembly' :
                  'Proceed to Next Stage'}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>

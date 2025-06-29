@@ -201,12 +201,6 @@ export const calculateCurrentStage = (segments: PrismaSegmentWithRelations[]): W
     return 'VIDEO_GENERATION';
   }
 
-  // Check if all segments have approved audio
-  const allAudioApproved = segments.every(s => s.audioApprovalStatus === 'APPROVED');
-  if (!allAudioApproved) {
-    return 'AUDIO_GENERATION';
-  }
-
   // Check if all segments are finally approved
   const allFinalApproved = segments.every(s => s.finalApprovalStatus === 'APPROVED');
   if (!allFinalApproved) {

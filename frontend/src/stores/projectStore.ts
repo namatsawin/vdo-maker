@@ -251,19 +251,45 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
     }
   },
 
-  generateSegmentAudio: async (_segmentId: string, text: string, voice: string = 'default', model?: string) => {
+  generateSegmentAudio: async (segmentId: string, _text: string, voice: string = 'default', model?: string) => {
     set({ isLoading: true, error: null });
 
     try {
-      const aiStore = useAIStore.getState();
-      const result = await aiStore.generateAudio(text, voice, model);
+      // Get current project to find the segment
+      const state = useProjectStore.getState();
+      const currentProject = state.currentProject || state.projects.find(p => 
+        p.segments.some(s => s.id === segmentId)
+      );
 
-      if (result && result.audioUrl) {
-        set({ isLoading: false });
-        return result.audioUrl;
-      } else {
-        throw new Error('Invalid audio generation response');
+      if (!currentProject) {
+        throw new Error('Project not found for segment');
       }
+
+      // Use the new project service method
+      const result = await projectService.generateSegmentAudio(
+        currentProject.id, 
+        segmentId, 
+        voice, 
+        model
+      );
+
+      // Update local state with the updated segment
+      set(state => ({
+        projects: state.projects.map(p => 
+          p.id === currentProject.id 
+            ? { ...p, segments: p.segments.map(s => s.id === segmentId ? result.segment : s) }
+            : p
+        ),
+        currentProject: state.currentProject?.id === currentProject.id
+          ? { 
+              ...state.currentProject, 
+              segments: state.currentProject.segments.map(s => s.id === segmentId ? result.segment : s)
+            }
+          : state.currentProject,
+        isLoading: false
+      }));
+
+      return result.audioUrl;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Audio generation failed';
       set({ error: errorMessage, isLoading: false });

@@ -9,7 +9,8 @@ import {
   generateTTS, 
   generateIdeas,
   testAIConnection,
-  getAvailableModels
+  getAvailableModels,
+  getAvailableVoices
 } from '@/controllers/aiController';
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use(authenticateToken);
 
 // Model information
 router.get('/models', getAvailableModels);
+router.get('/voices', getAvailableVoices);
 
 // Script generation
 router.post('/script/generate', generateScript);

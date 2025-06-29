@@ -47,6 +47,21 @@ class ProjectService {
     return response.data.segment;
   }
 
+  // Generate audio for segment
+  async generateSegmentAudio(projectId: string, segmentId: string, voice?: string, model?: string): Promise<{ segment: VideoSegment; audioUrl: string }> {
+    const response = await apiClient.post(`/projects/${projectId}/segments/${segmentId}/audio`, {
+      voice: voice || 'default',
+      model: model || 'gemini-2.5-flash'
+    });
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to generate audio');
+    }
+    return {
+      segment: response.data.segment,
+      audioUrl: response.data.audioUrl
+    };
+  }
+
   // Delete project
   async deleteProject(id: string): Promise<void> {
     const response = await apiClient.delete(`/projects/${id}`);

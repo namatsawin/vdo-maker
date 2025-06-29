@@ -7,10 +7,9 @@ interface WorkflowProgressProps {
 }
 
 const stages = [
-  { key: WorkflowStage.SCRIPT_GENERATION, label: 'Script Generation', description: 'AI generates video script' },
+  { key: WorkflowStage.SCRIPT_GENERATION, label: 'Script & Audio', description: 'AI generates script with audio preview' },
   { key: WorkflowStage.IMAGE_GENERATION, label: 'Image Generation', description: 'Create first frame images' },
   { key: WorkflowStage.VIDEO_GENERATION, label: 'Video Generation', description: 'Generate video segments' },
-  { key: WorkflowStage.AUDIO_GENERATION, label: 'Audio Generation', description: 'Create voice narration' },
   { key: WorkflowStage.FINAL_ASSEMBLY, label: 'Final Assembly', description: 'Combine all elements' },
 ];
 

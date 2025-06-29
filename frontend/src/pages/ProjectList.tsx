@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, MoreVertical, Play, Trash2, Calendar, Clock } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
@@ -10,9 +10,13 @@ import { ProjectStatus, WorkflowStage } from '@/types';
 import type { Project } from '@/types';
 
 export function ProjectList() {
-  const { projects, deleteProject } = useProjectStore();
+  const { projects, deleteProject, loadProjects } = useProjectStore();
   const { addToast } = useUIStore();
   
+  useEffect(() => {
+    loadProjects()
+  }, [])
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'updated'>('updated');
@@ -64,10 +68,9 @@ export function ProjectList() {
 
   const getStageDisplay = (stage: WorkflowStage) => {
     const stageMap: Record<WorkflowStage, string> = {
-      [WorkflowStage.SCRIPT_GENERATION]: 'Script Generation',
+      [WorkflowStage.SCRIPT_GENERATION]: 'Script & Audio',
       [WorkflowStage.IMAGE_GENERATION]: 'Image Generation',
       [WorkflowStage.VIDEO_GENERATION]: 'Video Generation',
-      [WorkflowStage.AUDIO_GENERATION]: 'Audio Generation',
       [WorkflowStage.FINAL_ASSEMBLY]: 'Final Assembly',
       [WorkflowStage.COMPLETED]: 'Completed',
     };

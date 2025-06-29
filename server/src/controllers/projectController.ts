@@ -432,6 +432,139 @@ export const updateSegment = async (req: AuthenticatedRequest, res: Response): P
   }
 };
 
+// Generate audio for segment
+export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const { projectId, segmentId } = req.params;
+    const { voice = 'default', model = 'gemini-2.5-flash' } = req.body;
+
+    if (!userId) {
+      throw createError('User not authenticated', 401);
+    }
+
+    // Verify project ownership
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId }
+    });
+
+    if (!project) {
+      throw createError('Project not found', 404);
+    }
+
+    // Get segment with script
+    const segment = await prisma.segment.findFirst({
+      where: { id: segmentId, projectId },
+      include: {
+        images: true,
+        videos: true,
+        audios: true,
+      }
+    });
+
+    if (!segment) {
+      throw createError('Segment not found', 404);
+    }
+
+    if (!segment.script.trim()) {
+      throw createError('Segment script is empty', 400);
+    }
+
+    // Generate audio using AI service
+    try {
+      // Import AI controller function
+      const { generateTTS } = await import('./aiController');
+      
+      // Create a mock request object for the AI controller
+      const aiRequest = {
+        user: req.user,
+        body: {
+          text: segment.script,
+          voice,
+          model
+        }
+      } as AuthenticatedRequest;
+
+      // Create a mock response object to capture the result
+      let audioResult: any = null;
+      const aiResponse = {
+        json: (data: any) => {
+          audioResult = data;
+        },
+        status: () => aiResponse
+      } as any;
+
+      // Create a mock next function
+      const mockNext = (error?: any) => {
+        if (error) throw error;
+      };
+
+      // Call the AI controller
+      await generateTTS(aiRequest, aiResponse, mockNext);
+
+      if (!audioResult?.success || !audioResult?.data?.audioUrl) {
+        throw new Error('Audio generation failed');
+      }
+
+      // Create audio record in database
+      const audio = await prisma.audio.create({
+        data: {
+          url: audioResult.data.audioUrl,
+          text: segment.script,
+          voice,
+          status: 'DRAFT',
+          duration: audioResult.data.duration || null,
+          metadata: JSON.stringify({
+            model,
+            voice,
+            generatedAt: new Date().toISOString()
+          }),
+          segmentId: segment.id
+        }
+      });
+
+      // Update segment to include the new audio
+      const updatedSegment = await prisma.segment.findUnique({
+        where: { id: segmentId },
+        include: {
+          images: true,
+          videos: true,
+          audios: true,
+        }
+      });
+
+      if (!updatedSegment) {
+        throw createError('Failed to fetch updated segment', 500);
+      }
+
+      // Map to frontend type
+      const mappedSegment = mapVideoSegment(updatedSegment);
+
+      res.json({
+        success: true,
+        data: { 
+          segment: mappedSegment,
+          audioUrl: audio.url,
+          message: 'Audio generated successfully'
+        }
+      });
+
+    } catch (aiError) {
+      console.error('AI audio generation failed:', aiError);
+      throw createError('Failed to generate audio', 500);
+    }
+
+  } catch (error) {
+    console.error('Generate segment audio error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Failed to generate audio'
+      }
+    });
+  }
+};
+
 // Delete project
 export const deleteProject = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {

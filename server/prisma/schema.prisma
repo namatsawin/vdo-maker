@@ -29,7 +29,7 @@ model Project {
   title        String
   description  String?
   status       String   @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, FAILED
-  currentStage String   @default("SCRIPT_GENERATION") // SCRIPT_GENERATION, IMAGE_GENERATION, VIDEO_GENERATION, AUDIO_GENERATION, FINAL_ASSEMBLY, COMPLETED
+  currentStage String   @default("SCRIPT_GENERATION") // SCRIPT_GENERATION, IMAGE_GENERATION, VIDEO_GENERATION, FINAL_ASSEMBLY, COMPLETED
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   

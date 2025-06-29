@@ -18,6 +18,8 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
 
+  console.log('audio:', audio)
+
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;

@@ -47,6 +47,7 @@ services:
       - PORT=3001
       - API_VERSION=v1
       - FRONTEND_URL=http://localhost:5173
+      - BACKEND_URL=http://localhost:3001
       - DATABASE_URL=postgresql://vdo_maker_user:vdo_maker_password@postgres:5432/vdo_maker
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-12345
       - JWT_EXPIRES_IN=7d
@@ -62,7 +63,7 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
-      - backend-uploads:/app/uploads
+      - ./server/uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,5 +75,4 @@ networks:
     driver: bridge
 
 volumes:
-  backend-uploads:
   postgres_data:
