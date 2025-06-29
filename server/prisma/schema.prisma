@@ -28,7 +28,7 @@ model Project {
   id           String   @id @default(cuid())
   title        String
   description  String?
-  status       String   @default("DRAFT") // DRAFT, IN_PROGRESS, COMPLETED, FAILED
+  status       String   @default("DRAFT") // DRAFT, COMPLETED
   currentStage String   @default("SCRIPT_GENERATION") // SCRIPT_GENERATION, IMAGE_GENERATION, VIDEO_GENERATION, FINAL_ASSEMBLY, COMPLETED
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -46,10 +46,10 @@ model Segment {
   order                  Int
   script                 String
   videoPrompt            String
-  status                 String   @default("DRAFT") // Overall status: DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
+  status                 String   @default("DRAFT") // Overall status: DRAFT, PROCESSING, APPROVED, REJECTED, REGENERATING
   
   // Individual approval statuses
-  scriptApprovalStatus   String   @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
+  scriptApprovalStatus   String   @default("DRAFT") // DRAFT, PROCESSING, APPROVED, REJECTED, REGENERATING
   imageApprovalStatus    String   @default("DRAFT")
   videoApprovalStatus    String   @default("DRAFT")
   audioApprovalStatus    String   @default("DRAFT")
@@ -72,7 +72,6 @@ model Image {
   id        String   @id @default(cuid())
   url       String
   prompt    String
-  status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   metadata  String?  // JSON string for additional data
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,7 +87,6 @@ model Video {
   id        String   @id @default(cuid())
   url       String
   prompt    String
-  status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   duration  Int?     // Duration in seconds
   metadata  String?  // JSON string for additional data
   createdAt DateTime @default(now())
@@ -106,7 +104,6 @@ model Audio {
   url       String
   text      String
   voice     String   // Voice type used
-  status    String   @default("PENDING") // DRAFT, PENDING, APPROVED, REJECTED, REGENERATING
   duration  Int?     // Duration in seconds
   metadata  String?  // JSON string for additional data
   isSelected Boolean @default(false) // Identifies which audio is currently selected

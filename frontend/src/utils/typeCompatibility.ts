@@ -4,7 +4,6 @@ import type { Project, VideoSegment, ApprovalStatus } from '@/types';
 export const LEGACY_APPROVAL_STATUS = {
   approved: 'APPROVED' as ApprovalStatus,
   rejected: 'REJECTED' as ApprovalStatus,
-  pending: 'PENDING' as ApprovalStatus,
   draft: 'DRAFT' as ApprovalStatus,
   regenerating: 'REGENERATING' as ApprovalStatus,
 };
@@ -16,8 +15,6 @@ export const convertLegacyApprovalStatus = (status: string): ApprovalStatus => {
       return 'APPROVED' as ApprovalStatus;
     case 'rejected':
       return 'REJECTED' as ApprovalStatus;
-    case 'pending':
-      return 'PENDING' as ApprovalStatus;
     case 'regenerating':
       return 'REGENERATING' as ApprovalStatus;
     case 'draft':
@@ -33,8 +30,6 @@ export const convertToLegacyApprovalStatus = (status: ApprovalStatus): string =>
       return 'approved';
     case 'REJECTED':
       return 'rejected';
-    case 'PENDING':
-      return 'pending';
     case 'REGENERATING':
       return 'regenerating';
     case 'DRAFT':
@@ -186,15 +181,15 @@ export const getSegmentOverallStatus = (segment: VideoSegment): ApprovalStatus =
     return 'APPROVED' as ApprovalStatus;
   }
   
-  // If any stage is in progress, the overall status is pending
+  // If any stage is in progress, the overall status is regenerating
   if ([
     segment.scriptApprovalStatus,
     segment.imageApprovalStatus,
     segment.videoApprovalStatus,
     segment.audioApprovalStatus,
     segment.finalApprovalStatus
-  ].some(status => ['PENDING', 'REGENERATING'].includes(status as string))) {
-    return 'PENDING' as ApprovalStatus;
+  ].some(status => ['REGENERATING'].includes(status as string))) {
+    return 'REGENERATING' as ApprovalStatus;
   }
   
   // Default to draft

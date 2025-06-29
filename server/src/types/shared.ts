@@ -3,9 +3,7 @@
 // Enums
 export const ProjectStatus = {
   DRAFT: 'DRAFT',
-  IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
-  FAILED: 'FAILED',
 } as const;
 
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
@@ -22,7 +20,7 @@ export type WorkflowStage = (typeof WorkflowStage)[keyof typeof WorkflowStage];
 
 export const ApprovalStatus = {
   DRAFT: 'DRAFT',
-  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
   REGENERATING: 'REGENERATING',
@@ -48,7 +46,6 @@ export interface MediaAsset {
   width?: number; // For images/video
   height?: number; // For images/video
   prompt?: string;
-  status: ApprovalStatus;
   metadata?: Record<string, any>;
   duration?: number; // for video/audio in seconds
   isSelected?: boolean; // For audio selection (multiple audio files per segment)

@@ -9,9 +9,6 @@ export const ApprovalStatus = {
   // User can edit content, not yet submitted for processing
   DRAFT: 'DRAFT',
   
-  // User submitted content, queued for AI processing
-  SUBMITTED: 'SUBMITTED',
-  
   // AI is actively processing the content
   PROCESSING: 'PROCESSING',
   
@@ -28,8 +25,7 @@ export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus
  * Status transition rules and validation
  */
 export const StatusTransitions: Record<ApprovalStatus, ApprovalStatus[]> = {
-  [ApprovalStatus.DRAFT]: [ApprovalStatus.SUBMITTED],
-  [ApprovalStatus.SUBMITTED]: [ApprovalStatus.PROCESSING, ApprovalStatus.DRAFT], // Can cancel
+  [ApprovalStatus.DRAFT]: [ApprovalStatus.PROCESSING],
   [ApprovalStatus.PROCESSING]: [ApprovalStatus.APPROVED, ApprovalStatus.REJECTED],
   [ApprovalStatus.APPROVED]: [ApprovalStatus.DRAFT], // Can regenerate
   [ApprovalStatus.REJECTED]: [ApprovalStatus.DRAFT], // Can retry
@@ -53,14 +49,6 @@ export const StatusDisplay = {
     bgColor: 'bg-gray-100',
     textColor: 'text-gray-700',
     description: 'Ready to edit and submit',
-  },
-  [ApprovalStatus.SUBMITTED]: {
-    icon: '📤',
-    text: 'Queued',
-    color: 'blue',
-    bgColor: 'bg-blue-100',
-    textColor: 'text-blue-700',
-    description: 'Waiting for AI processing',
   },
   [ApprovalStatus.PROCESSING]: {
     icon: '⚙️',
@@ -95,8 +83,6 @@ export function getAvailableActions(status: ApprovalStatus): string[] {
   switch (status) {
     case ApprovalStatus.DRAFT:
       return ['edit', 'submit', 'generate'];
-    case ApprovalStatus.SUBMITTED:
-      return ['cancel'];
     case ApprovalStatus.PROCESSING:
       return ['cancel']; // If cancellation is supported
     case ApprovalStatus.APPROVED:
@@ -119,7 +105,7 @@ export function canUserEdit(status: ApprovalStatus): boolean {
  * Check if content is being processed
  */
 export function isProcessing(status: ApprovalStatus): boolean {
-  return status === ApprovalStatus.SUBMITTED || status === ApprovalStatus.PROCESSING;
+  return status === ApprovalStatus.PROCESSING;
 }
 
 /**

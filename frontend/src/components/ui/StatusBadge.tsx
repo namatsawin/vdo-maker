@@ -148,7 +148,6 @@ export function StatusActionButtons({
           </>
         );
 
-      case ApprovalStatus.SUBMITTED:
       case ApprovalStatus.PROCESSING:
         return (
           <>

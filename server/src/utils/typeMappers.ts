@@ -60,7 +60,6 @@ const mapImageAsset = (image: Image): MediaAsset => {
     width: metadata.width,
     height: metadata.height,
     prompt: image.prompt,
-    status: image.status as ApprovalStatus,
     metadata,
     createdAt: image.createdAt.toISOString(),
     updatedAt: image.updatedAt.toISOString(),
@@ -80,7 +79,6 @@ const mapVideoAsset = (video: Video): MediaAsset => {
     width: metadata.width,
     height: metadata.height,
     prompt: video.prompt,
-    status: video.status as ApprovalStatus,
     metadata,
     duration: video.duration || undefined,
     createdAt: video.createdAt.toISOString(),
@@ -99,7 +97,6 @@ const mapAudioAsset = (audio: Audio): MediaAsset => {
     type: 'audio',
     size: metadata.size || 0,
     prompt: audio.text, // Audio uses 'text' field as prompt
-    status: audio.status as ApprovalStatus,
     metadata,
     duration: audio.duration || undefined,
     isSelected: audio.isSelected || false, // New field for audio selection
@@ -219,32 +216,12 @@ export const calculateProjectStatus = (segments: PrismaSegmentWithRelations[]): 
     return 'DRAFT';
   }
 
-  // Check if any segment has failed
-  const hasFailedSegments = segments.some(s => 
-    s.scriptApprovalStatus === 'REJECTED' ||
-    s.imageApprovalStatus === 'REJECTED' ||
-    s.videoApprovalStatus === 'REJECTED' ||
-    s.audioApprovalStatus === 'REJECTED' ||
-    s.finalApprovalStatus === 'REJECTED'
-  );
-
-  if (hasFailedSegments) {
-    return 'FAILED';
-  }
-
   // Check if all segments are completed
   const allCompleted = segments.every(s => s.finalApprovalStatus === 'APPROVED');
   if (allCompleted) {
     return 'COMPLETED';
   }
 
-  // Check if any work has started
-  const hasStartedWork = segments.some(s => 
-    s.scriptApprovalStatus !== 'DRAFT' ||
-    s.imageApprovalStatus !== 'DRAFT' ||
-    s.videoApprovalStatus !== 'DRAFT' ||
-    s.audioApprovalStatus !== 'DRAFT'
-  );
-
-  return hasStartedWork ? 'IN_PROGRESS' : 'DRAFT';
+  // Default to draft for all other cases
+  return 'DRAFT';
 };

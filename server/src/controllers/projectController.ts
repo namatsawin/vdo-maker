@@ -157,7 +157,7 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
       data: {
         title,
         description: description || '',
-        status: 'IN_PROGRESS',
+        status: 'DRAFT',
         currentStage: 'SCRIPT_GENERATION',
         userId
       }

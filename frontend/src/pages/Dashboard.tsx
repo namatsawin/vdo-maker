@@ -14,8 +14,8 @@ export function Dashboard() {
   }, [loadProjects]);
 
   const totalProjects = projects.length;
-  const inProgressProjects = projects.filter(
-    (p) => p.status === ProjectStatus.IN_PROGRESS
+  const draftProjects = projects.filter(
+    (p) => p.status === ProjectStatus.DRAFT
   ).length;
   const completedProjects = projects.filter(
     (p) => p.status === ProjectStatus.COMPLETED
@@ -92,12 +92,12 @@ export function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium">Draft</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inProgressProjects}</div>
+            <div className="text-2xl font-bold">{draftProjects}</div>
             <p className="text-xs text-muted-foreground">
-              Currently being worked on
+              Projects in draft status
             </p>
           </CardContent>
         </Card>
@@ -171,8 +171,6 @@ export function Dashboard() {
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         project.status === ProjectStatus.COMPLETED
                           ? 'bg-green-100 text-green-800'
-                          : project.status === ProjectStatus.IN_PROGRESS
-                          ? 'bg-blue-100 text-blue-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
                         {project.status.replace('_', ' ').toUpperCase()}

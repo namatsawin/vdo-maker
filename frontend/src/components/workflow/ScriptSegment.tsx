@@ -76,7 +76,6 @@ export function ScriptSegment({
         url: audioUrl,
         filename: `segment-${index + 1}-audio.mp3`,
         type: 'audio',
-        status: 'DRAFT' as ApprovalStatus,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

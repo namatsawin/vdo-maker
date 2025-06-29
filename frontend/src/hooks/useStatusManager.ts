@@ -126,7 +126,6 @@ export function useFieldStatus(
   );
 
   // Convenience methods for common transitions
-  const submit = useCallback(() => transitionTo(ApprovalStatus.SUBMITTED, 'User submitted'), [transitionTo]);
   const startProcessing = useCallback(() => transitionTo(ApprovalStatus.PROCESSING, 'AI processing started'), [transitionTo]);
   const approve = useCallback(() => transitionTo(ApprovalStatus.APPROVED, 'Content approved'), [transitionTo]);
   const reject = useCallback((reason?: string) => transitionTo(ApprovalStatus.REJECTED, reason || 'Content rejected'), [transitionTo]);
@@ -136,7 +135,6 @@ export function useFieldStatus(
     status,
     updateStatus,
     transitionTo,
-    submit,
     startProcessing,
     approve,
     reject,
@@ -152,7 +150,7 @@ export function useAIGenerationStatus(
   fieldName: string,
   generateFunction: () => Promise<any>
 ) {
-  const { status, submit, startProcessing, approve, reject, reset } = useFieldStatus(
+  const { status, startProcessing, approve, reject, reset } = useFieldStatus(
     ApprovalStatus.DRAFT,
     segmentId,
     fieldName,
@@ -168,9 +166,6 @@ export function useAIGenerationStatus(
     try {
       setIsGenerating(true);
       setError(null);
-
-      // Submit for processing
-      if (!submit()) return;
 
       // Start processing
       if (!startProcessing()) return;
@@ -190,7 +185,7 @@ export function useAIGenerationStatus(
     } finally {
       setIsGenerating(false);
     }
-  }, [isGenerating, submit, startProcessing, approve, reject, generateFunction]);
+  }, [isGenerating, startProcessing, approve, reject, generateFunction]);
 
   const retry = useCallback(async () => {
     reset();
