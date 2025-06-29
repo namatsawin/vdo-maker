@@ -247,7 +247,6 @@ export function ImageApproval({
           <div className="flex items-center justify-between pt-4 border-t">
             <Button
               variant="outline"
-              // onClick={handleRegenerate}
               disabled={isGenerating}
               className="flex items-center gap-2"
             >
@@ -270,11 +269,10 @@ export function ImageApproval({
               </Button>
               <Button
                 onClick={() => onApprove(segment.id)}
-                disabled={!selectedImage}
                 className="flex items-center gap-2"
               >
                 <Check className="h-4 w-4" />
-                Approve Image
+                Approve
               </Button>
             </div>
           </div>

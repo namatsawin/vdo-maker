@@ -51,7 +51,6 @@ export function ScriptSegment({
     }
   }, [currentStatus, isEditing, addToast]);
 
-  const selectedAudio = segment.audios.find(item => item.isSelected)
   const handleSave = () => {
     onUpdate(segment.id, {
       script: editedScript,
@@ -379,7 +378,6 @@ export function ScriptSegment({
                   size="sm"
                   onClick={() => onApprove(segment.id)}
                   className="bg-green-600 hover:bg-green-700"
-                  disabled={!selectedAudio}
                 >
                   <Check className="h-4 w-4 mr-1" />
                   Approve
