@@ -1,6 +1,80 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { logger } from '@/utils/logger';
 import { ScriptGenerationRequest, ScriptSegment, GeminiModel } from '@/types';
+
+// JSON Schema for structured output using proper Type enum
+const VIDEO_IDEAS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    ideas: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: {
+            type: Type.STRING,
+            description: "Unique identifier for the idea"
+          },
+          title: {
+            type: Type.STRING,
+            description: "Catchy, engaging video title"
+          },
+          description: {
+            type: Type.STRING,
+            description: "Detailed 2-3 sentence description of the video concept"
+          },
+          estimatedDuration: {
+            type: Type.STRING,
+            description: "Estimated video duration (e.g., '3-5 minutes', '2-3 minutes')"
+          },
+          targetAudience: {
+            type: Type.STRING,
+            description: "Target audience for the video"
+          },
+          difficulty: {
+            type: Type.STRING,
+            enum: ["Easy", "Medium", "Hard"],
+            description: "Production difficulty level"
+          }
+        },
+        required: ["id", "title", "description", "estimatedDuration", "targetAudience", "difficulty"],
+        propertyOrdering: ["id", "title", "description", "estimatedDuration", "targetAudience", "difficulty"]
+      }
+    }
+  },
+  required: ["ideas"],
+  propertyOrdering: ["ideas"]
+};
+
+const SCRIPT_SEGMENTS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    segments: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          order: {
+            type: Type.INTEGER,
+            description: "Segment order number starting from 1"
+          },
+          script: {
+            type: Type.STRING,
+            description: "The spoken content for this segment"
+          },
+          videoPrompt: {
+            type: Type.STRING,
+            description: "Detailed visual description for video generation"
+          }
+        },
+        required: ["order", "script", "videoPrompt"],
+        propertyOrdering: ["order", "script", "videoPrompt"]
+      }
+    }
+  },
+  required: ["segments"],
+  propertyOrdering: ["segments"]
+};
 
 class GeminiService {
   private genAI: GoogleGenAI;
@@ -30,6 +104,59 @@ For each segment, provide:
 1. A clear, engaging script (what will be spoken)
 2. A detailed video prompt (describing what should be shown visually)
 
+Make sure the script flows naturally from one segment to the next, and the video prompts are detailed enough for AI video generation.
+`;
+
+      logger.info(`Generating script using model: ${model} with structured output`);
+
+      const result = await this.genAI.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: SCRIPT_SEGMENTS_SCHEMA
+        }
+      });
+
+      // Extract structured response
+      const text = result.text || '';
+      
+      if (!text) {
+        throw new Error('No response received from Gemini');
+      }
+
+      // Parse the structured JSON response
+      const response = JSON.parse(text);
+      const segments: ScriptSegment[] = response.segments.map((segment: any) => ({
+        id: `segment-${segment.order}`,
+        order: segment.order,
+        script: segment.script,
+        videoPrompt: segment.videoPrompt,
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+
+      logger.info(`Successfully generated ${segments.length} script segments with structured output`);
+      return segments;
+      
+    } catch (error) {
+      logger.error('Script generation with structured output failed:', error);
+      // Fallback to original method if structured output fails
+      return this.generateScriptFallback(request);
+    }
+  }
+
+  private async generateScriptFallback(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {
+    try {
+      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
+      
+      const prompt = `
+Create a video script for the topic: "${request.title}"
+${request.description ? `Description: ${request.description}` : ''}
+
+Please generate a script divided into 3-5 segments. Each segment should be 15-30 seconds long when spoken.
+
 Format your response as a JSON array with this structure:
 [
   {
@@ -42,20 +169,20 @@ Format your response as a JSON array with this structure:
 Make sure the script flows naturally from one segment to the next, and the video prompts are detailed enough for AI video generation.
 `;
 
-      logger.info(`Generating script using model: ${model}`);
+      logger.info(`Using fallback method for script generation`);
 
       const result = await this.genAI.models.generateContent({
         model: model,
-        contents: [{
-          role: 'user',
-          parts: [{ text: prompt }]
-        }]
+        contents: prompt
       });
 
-      // Extract text from the new response format
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const text = result.text;
 
       logger.info('Gemini script generation response received');
+
+      if (!text) {
+        throw new Error('No response received from Gemini fallback');
+      }
 
       // Try to parse JSON from the response
       const jsonMatch = text.match(/\[[\s\S]*\]/);
@@ -67,13 +194,17 @@ Make sure the script flows naturally from one segment to the next, and the video
       
       // Validate and clean up segments
       return segments.map((segment, index) => ({
-        order: index + 1,
+        id: `segment-${segment.order || index + 1}`,
+        order: segment.order || index + 1,
         script: segment.script || '',
-        videoPrompt: segment.videoPrompt || ''
+        videoPrompt: segment.videoPrompt || '',
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }));
-
+      
     } catch (error) {
-      logger.error('Gemini script generation failed:', error);
+      logger.error('Fallback script generation failed:', error);
       throw error;
     }
   }
@@ -109,14 +240,11 @@ Make sure the script flows naturally from one segment to the next, and the video
       // Test with a simple prompt
       const result = await this.genAI.models.generateContent({
         model: selectedModel,
-        contents: [{
-          role: 'user',
-          parts: [{ text: 'Hello, respond with "Connection successful"' }]
-        }]
+        contents: 'Hello, respond with "Connection successful"'
       });
 
-      // Extract text from the new response format
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      // Extract text from the response
+      const text = result.text || '';
       
       logger.info(`Gemini connection test successful with model: ${selectedModel}`);
       
@@ -151,6 +279,56 @@ For each idea, provide:
 
 Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
 
+Ensure each idea is unique, creative, and actionable for video production.
+`;
+
+      logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model} with structured output`);
+
+      const result = await this.genAI.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: VIDEO_IDEAS_SCHEMA
+        }
+      });
+
+      // Extract structured response
+      const text = result.text || '';
+      
+      if (!text) {
+        throw new Error('No response received from Gemini');
+      }
+
+      // Parse the structured JSON response
+      const response = JSON.parse(text);
+      const ideas = response.ideas.map((idea: any, index: number) => ({
+        id: idea.id || `idea-${Date.now()}-${index}`,
+        title: idea.title,
+        description: idea.description,
+        estimatedDuration: idea.estimatedDuration,
+        targetAudience: idea.targetAudience,
+        difficulty: idea.difficulty
+      }));
+
+      logger.info(`Successfully generated ${ideas.length} video ideas with structured output`);
+      return ideas;
+      
+    } catch (error) {
+      logger.error('Video ideas generation with structured output failed:', error);
+      // Fallback to original method if structured output fails
+      return this.generateVideoIdeasFallback(request);
+    }
+  }
+
+  private async generateVideoIdeasFallback(request: { topic: string; model?: GeminiModel; count?: number }): Promise<any[]> {
+    try {
+      const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
+      const count = request.count || 5;
+      
+      const prompt = `
+Generate ${count} creative video ideas for the topic: "${request.topic}"
+
 Format your response as a JSON array with this structure:
 [
   {
@@ -162,22 +340,16 @@ Format your response as a JSON array with this structure:
     "difficulty": "Medium"
   }
 ]
-
-Ensure each idea is unique, creative, and actionable for video production.
 `;
 
-      logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model}`);
+      logger.info(`Using fallback method for video ideas generation`);
 
       const result = await this.genAI.models.generateContent({
         model: model,
-        contents: [{
-          role: 'user',
-          parts: [{ text: prompt }]
-        }]
+        contents: prompt
       });
 
-      // Extract text from the new response format
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const text = result.text || '';
       
       if (!text) {
         throw new Error('No response received from Gemini');
@@ -186,7 +358,6 @@ Ensure each idea is unique, creative, and actionable for video production.
       // Parse the JSON response
       let ideas;
       try {
-        // Clean the response text to extract JSON
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
           throw new Error('No valid JSON array found in response');
@@ -206,15 +377,15 @@ Ensure each idea is unique, creative, and actionable for video production.
         
       } catch (parseError) {
         logger.error('Failed to parse ideas JSON:', parseError);
-        // Fallback: create structured ideas from text
+        // Create structured ideas from text
         ideas = this.createFallbackIdeas(text, count, request.topic);
       }
 
-      logger.info(`Successfully generated ${ideas.length} video ideas`);
+      logger.info(`Successfully generated ${ideas.length} video ideas using fallback method`);
       return ideas;
       
     } catch (error) {
-      logger.error('Video ideas generation failed:', error);
+      logger.error('Fallback video ideas generation failed:', error);
       throw error;
     }
   }
