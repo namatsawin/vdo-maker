@@ -4,6 +4,7 @@ import { createError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, CreateProjectRequest, UpdateProjectRequest, UpdateSegmentRequest, ProjectStatus, WorkflowStage, ApiResponse } from '../types';
 import { mapProject, mapVideoSegment, calculateCurrentStage, calculateProjectStatus } from '../utils/typeMappers';
 import { generateScript } from './aiController';
+import { geminiService } from '@/services/geminiService';
 
 const prisma = new PrismaClient();
 
@@ -464,12 +465,12 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
           url: audioResult.data.audioUrl,
           text: segment.script,
           voice,
-          duration: audioResult.data.duration || null,
           isSelected: true, // New audio is selected by default
           metadata: JSON.stringify({
             model,
             voice,
-            generatedAt: new Date().toISOString()
+            generatedAt: new Date().toISOString(),
+            duration: audioResult.data.duration || null // Store duration in metadata instead
           }),
           segmentId: segment.id
         }
@@ -610,8 +611,7 @@ export const generateSegments = async (req: AuthenticatedRequest, res: Response)
     const { 
       model = 'gemini-2.5-flash', 
       systemInstructionId,
-      customInstruction,
-      segmentCount = 3 
+      customInstruction
     } = req.body;
 
     if (!userId) {
@@ -646,28 +646,30 @@ export const generateSegments = async (req: AuthenticatedRequest, res: Response)
       systemInstruction = defaultInstruction?.instruction || 'You are an expert video script writer. Create engaging, well-structured video scripts.';
     }
 
-    // Generate segments using AI (simplified for now - you can integrate with actual AI service)
-    const segments = [];
-    const segmentTypes = ['introduction', 'main_content', 'conclusion'];
-    
-    for (let i = 0; i < Math.min(segmentCount, 10); i++) {
-      const segmentType = segmentTypes[i] || 'content';
-      const segment = await prisma.segment.create({
-        data: {
-          order: i,
-          script: `Generated script for ${project.title} - Segment ${i + 1} (${segmentType})`,
-          videoPrompt: `Professional ${segmentType} scene for ${project.title}`,
-          status: 'DRAFT',
-          scriptApprovalStatus: 'DRAFT',
-          imageApprovalStatus: 'DRAFT',
-          videoApprovalStatus: 'DRAFT',
-          audioApprovalStatus: 'DRAFT',
-          finalApprovalStatus: 'DRAFT',
-          projectId: project.id
-        }
-      });
-      segments.push(segment);
-    }
+    await prisma.segment.deleteMany({ 
+      where: { projectId: project.id }
+    })
+
+    const segments = await geminiService.generateScript({
+      title: project.title,
+      description: project.description ?? '',
+      systemInstruction,
+    })
+
+    await prisma.segment.createMany({
+      data: segments.map((segment) => ({
+        order: segment.order,
+        script: segment.script,
+        videoPrompt: segment.videoPrompt,
+        status: 'DRAFT',
+        scriptApprovalStatus: 'DRAFT',
+        imageApprovalStatus: 'DRAFT',
+        videoApprovalStatus: 'DRAFT',
+        audioApprovalStatus: 'DRAFT',
+        finalApprovalStatus: 'DRAFT',
+        projectId: project.id
+      }))
+    })
 
     // Fetch updated project with segments
     const updatedProject = await prisma.project.findUnique({
@@ -694,7 +696,7 @@ export const generateSegments = async (req: AuthenticatedRequest, res: Response)
       success: true,
       data: { 
         project: mappedProject,
-        message: `Generated ${segments.length} segments using ${model} model`
+        message: `AI intelligently generated ${segments.length} segments using ${model} model based on system instructions`
       }
     });
   } catch (error) {

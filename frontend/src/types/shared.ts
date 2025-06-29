@@ -58,7 +58,6 @@ export interface SegmentGenerationRequest {
   model?: string;
   systemInstructionId?: string;
   customInstruction?: string;
-  segmentCount?: number;
 }
 
 export const MediaType = {

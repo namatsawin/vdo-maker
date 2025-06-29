@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Wand2, Settings, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Textarea } from '@/components/ui/Textarea';
 import { ModelSelector } from '@/components/ui/ModelSelector';
@@ -25,7 +24,6 @@ export function SegmentGenerationDialog({
   loading = false 
 }: SegmentGenerationDialogProps) {
   const [selectedModel, setSelectedModel] = useState<string>(GeminiModel.GEMINI_2_5_FLASH);
-  const [segmentCount, setSegmentCount] = useState(3);
   const [instructionMode, setInstructionMode] = useState<'preset' | 'custom'>('preset');
   const [selectedInstructionId, setSelectedInstructionId] = useState<string>('');
   const [customInstruction, setCustomInstruction] = useState('');
@@ -61,7 +59,6 @@ export function SegmentGenerationDialog({
   const handleGenerate = () => {
     const request: SegmentGenerationRequest = {
       model: selectedModel,
-      segmentCount,
     };
 
     if (instructionMode === 'preset' && selectedInstructionId) {
@@ -79,12 +76,15 @@ export function SegmentGenerationDialog({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-6 border-b">
             <div className="flex items-center gap-2">
               <Wand2 className="h-6 w-6 text-blue-600" />
-              <h2 className="text-2xl font-bold">Generate Video Segments</h2>
+              <div>
+                <h2 className="text-2xl font-bold">Generate Video Segments</h2>
+                <p className="text-sm text-gray-600">AI will intelligently determine the optimal segmentation</p>
+              </div>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -103,30 +103,9 @@ export function SegmentGenerationDialog({
                   onChange={setSelectedModel}
                   label="Select AI Model"
                 />
-              </CardContent>
-            </Card>
-
-            {/* Segment Count */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Segment Configuration</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="segmentCount">Number of Segments</Label>
-                  <Input
-                    id="segmentCount"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={segmentCount}
-                    onChange={(e) => setSegmentCount(parseInt(e.target.value) || 3)}
-                    className="w-32"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Generate 1-10 video segments (recommended: 3-5)
-                  </p>
-                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  The AI will intelligently determine the optimal number of segments based on your content and system instructions.
+                </p>
               </CardContent>
             </Card>
 
@@ -205,9 +184,9 @@ export function SegmentGenerationDialog({
                             {selectedInstruction.description}
                           </p>
                         )}
-                        <p className="text-sm text-gray-700">
+                        <pre className="text-sm text-gray-700 whitespace-pre-wrap break-words overflow-x-hidden overflow-y-auto">
                           {selectedInstruction.instruction}
-                        </p>
+                        </pre>
                       </div>
                     )}
                   </div>
@@ -222,7 +201,7 @@ export function SegmentGenerationDialog({
                       rows={6}
                     />
                     <p className="text-sm text-gray-500 mt-1">
-                      This instruction will guide how the AI generates your video scripts.
+                      This instruction guides how the AI generates scripts and determines the optimal number of segments for your video.
                     </p>
                   </div>
                 )}

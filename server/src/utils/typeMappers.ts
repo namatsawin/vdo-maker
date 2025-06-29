@@ -98,7 +98,6 @@ const mapAudioAsset = (audio: Audio): MediaAsset => {
     size: metadata.size || 0,
     prompt: audio.text, // Audio uses 'text' field as prompt
     metadata,
-    duration: audio.duration || undefined,
     isSelected: audio.isSelected || false, // New field for audio selection
     voice: audio.voice, // Voice type used for generation
     text: audio.text, // Text that was converted to speech
@@ -115,14 +114,6 @@ const calculateSegmentDuration = (segment: PrismaSegmentWithRelations): number =
   
   if (videoDuration > 0) {
     return videoDuration;
-  }
-  
-  // Try to get duration from audio assets
-  const audioDuration = segment.audios.reduce((max, audio) => 
-    Math.max(max, audio.duration || 0), 0);
-  
-  if (audioDuration > 0) {
-    return audioDuration;
   }
   
   // Default duration based on script length (rough estimate)

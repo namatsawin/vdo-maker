@@ -512,7 +512,7 @@ export function ProjectWorkflow() {
             <p className="text-gray-500 mb-6">
               Generate video segments with AI using your preferred model and system instructions.
             </p>
-            <Button onClick={() => setShowSegmentDialog(true)} className="flex items-center gap-2">
+            <Button onClick={() => setShowSegmentDialog(true)} className="flex items-center mx-auto gap-2">
               <Wand2 className="h-4 w-4" />
               Generate Segments
             </Button>

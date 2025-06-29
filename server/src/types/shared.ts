@@ -155,6 +155,7 @@ export type GeminiModel = (typeof GeminiModel)[keyof typeof GeminiModel];
 
 export interface ScriptGenerationRequest {
   title: string;
+  systemInstruction: string;
   description?: string;
   model?: GeminiModel;
 }

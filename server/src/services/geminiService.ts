@@ -130,30 +130,23 @@ class GeminiService {
   }
 
   async generateScript(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {
-    const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
+    const { 
+      title, 
+      description, 
+      systemInstruction, 
+      model = GeminiModel.GEMINI_2_5_FLASH 
+    } = request
     
-    const prompt = `
-Create a video script for the topic: "${request.title}"
-${request.description ? `Description: ${request.description}` : ''}
-
-Please generate a script divided into 3-5 segments. Each segment should be 15-30 seconds long when spoken.
-
-For each segment, provide:
-1. A clear, engaging script (what will be spoken)
-2. A detailed video prompt (describing what should be shown visually)
-
-Make sure the script flows naturally from one segment to the next, and the video prompts are detailed enough for AI video generation.
-`;
-
-    logger.info(`Generating script using model: ${model} with structured output`);
+    const prompt = `Topic: ${title}` + description ? `, Description: ${description}` : '';
 
     try {
       const result = await this.genAI.models.generateContent({
         model: model,
         contents: prompt,
         config: {
+          systemInstruction,
           responseMimeType: "application/json",
-          responseSchema: SCRIPT_SEGMENTS_SCHEMA
+          responseSchema: SCRIPT_SEGMENTS_SCHEMA,
         }
       });
 
@@ -170,7 +163,6 @@ Make sure the script flows naturally from one segment to the next, and the video
         order: segment.order,
         script: segment.script,
         videoPrompt: segment.videoPrompt,
-        status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }));
@@ -238,7 +230,12 @@ Make sure the script flows naturally from one segment to the next, and the video
 
       // Convert base64 to PCM buffer and save as proper WAV file
       const pcmBuffer = Buffer.from(audioData, 'base64');
-      await this.saveWaveFile(filePath, pcmBuffer);
+
+      const speedFactor = 1.1;
+      const rate = Math.round(24000 * speedFactor);
+      const channels = 1;
+      
+      await this.saveWaveFile(filePath, pcmBuffer, channels, rate);
 
       // Return the full URL that frontend can access
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
