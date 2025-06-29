@@ -191,14 +191,14 @@ class GeminiService {
       const voiceName = this.getGeminiVoiceName(voice);
       
       // Create TTS prompt with style guidance
-      const ttsPrompt = `Say in a clear, natural voice: ${text}`;
+      const prompt = `Read aloud in a warm, friendly, and clear tone: ${text}`;
 
       logger.info(`Calling Gemini TTS with voice: ${voiceName}`);
 
       // Generate audio using Gemini's native TTS
       const response = await this.genAI.models.generateContent({
         model: ttsModel,
-        contents: [{ parts: [{ text: ttsPrompt }] }],
+        contents: [{ parts: [{ text: prompt }] }],
         config: {
           responseModalities: ['AUDIO'],
           speechConfig: {
@@ -258,9 +258,7 @@ class GeminiService {
   }
 
   private getGeminiVoiceName(voice: string): string {
-    // Map user-friendly names to Gemini TTS voice names
     const voiceMap: Record<string, string> = {
-      'default': 'Kore',
       'kore': 'Kore',
       'puck': 'Puck', 
       'charon': 'Charon',
@@ -290,22 +288,6 @@ class GeminiService {
       'sadachbia': 'Sadachbia',
       'sadaltager': 'Sadaltager',
       'sulafat': 'Sulafat',
-      
-      // User-friendly aliases
-      'firm': 'Kore',
-      'upbeat': 'Puck',
-      'informative': 'Charon',
-      'excitable': 'Fenrir',
-      'youthful': 'Leda',
-      'bright': 'Autonoe',
-      'breathy': 'Enceladus',
-      'clear': 'Iapetus',
-      'smooth': 'Algieba',
-      'gravelly': 'Algenib',
-      'mature': 'Gacrux',
-      'casual': 'Zubenelgenubi',
-      'friendly': 'Achird',
-      'lively': 'Sadachbia'
     };
 
     return voiceMap[voice.toLowerCase()] || 'Kore';

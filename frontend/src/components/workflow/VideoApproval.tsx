@@ -13,8 +13,6 @@ interface VideoApprovalProps {
   imageUrl?: string;
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
-  onRegenerate: (segmentId: string) => void;
-  isRegenerating?: boolean;
 }
 
 interface GeneratedVideo {
@@ -33,8 +31,6 @@ export function VideoApproval({
   imageUrl,
   onApprove,
   onReject,
-  onRegenerate,
-  isRegenerating = false
 }: VideoApprovalProps) {
   const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -111,7 +107,6 @@ export function VideoApproval({
     }
 
     setIsGenerating(true);
-    onRegenerate(segment.id);
     
     try {
       const result = await generateSegmentVideo(segment.id, imageUrl, segment.videoPrompt);
@@ -296,10 +291,10 @@ export function VideoApproval({
             <Button
               variant="outline"
               onClick={handleRegenerate}
-              disabled={isGenerating || isRegenerating}
+              disabled={isGenerating}
               className="flex items-center gap-2"
             >
-              {isGenerating || isRegenerating ? (
+              {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RotateCcw className="h-4 w-4" />

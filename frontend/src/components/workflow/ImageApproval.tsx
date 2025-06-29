@@ -12,8 +12,6 @@ interface ImageApprovalProps {
   index: number;
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
-  onRegenerate: (segmentId: string) => void;
-  isRegenerating?: boolean;
 }
 
 interface GeneratedImage {
@@ -29,8 +27,6 @@ export function ImageApproval({
   index,
   onApprove,
   onReject,
-  onRegenerate,
-  isRegenerating = false
 }: ImageApprovalProps) {
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
@@ -90,40 +86,6 @@ export function ImageApproval({
         type: 'error',
         title: 'Image Generation Error',
         message: 'Failed to generate images. Please try again.',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleRegenerate = async () => {
-    setIsGenerating(true);
-    onRegenerate(segment.id);
-    
-    try {
-      const newImageUrl = await generateSegmentImage(segment.id, segment.videoPrompt, 'LANDSCAPE');
-      const newImage: GeneratedImage = {
-        id: `img-${segment.id}-${Date.now()}`,
-        url: newImageUrl,
-        prompt: segment.videoPrompt,
-        aspectRatio: 'LANDSCAPE',
-        generatedAt: new Date().toISOString(),
-      };
-
-      setGeneratedImages(prev => [newImage, ...prev]);
-      setSelectedImage(newImage);
-
-      addToast({
-        type: 'success',
-        title: 'Image Regenerated',
-        message: 'New image generated successfully!',
-      });
-    } catch (error) {
-      console.error('Image regeneration failed:', error);
-      addToast({
-        type: 'error',
-        title: 'Regeneration Failed',
-        message: 'Failed to regenerate image. Please try again.',
       });
     } finally {
       setIsGenerating(false);
@@ -285,11 +247,11 @@ export function ImageApproval({
           <div className="flex items-center justify-between pt-4 border-t">
             <Button
               variant="outline"
-              onClick={handleRegenerate}
-              disabled={isGenerating || isRegenerating}
+              // onClick={handleRegenerate}
+              disabled={isGenerating}
               className="flex items-center gap-2"
             >
-              {isGenerating || isRegenerating ? (
+              {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RotateCcw className="h-4 w-4" />

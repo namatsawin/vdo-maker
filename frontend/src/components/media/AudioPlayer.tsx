@@ -18,29 +18,40 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
 
-  useEffect(() => {
-    setPlaying(false)
-    setCurrentTime(0)
-    setVolume(0)
+  const reset = () => {
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setVolume(1)
     setMuted(false)
+  }
+  
+  useEffect(() => {
+    reset()
 
     const audioElement = audioRef.current;
     if (!audioElement) return;
+    if (!audio.url) return;
 
     const updateTime = () => setCurrentTime(audioElement.currentTime);
-    const updateDuration = () => setDuration(audioElement.duration);
+    const updateDuration = () => setDuration(audioElement.duration || 0);
     const handleEnded = () => setPlaying(false);
+    const handleError = () => reset()
 
     audioElement.addEventListener('timeupdate', updateTime);
     audioElement.addEventListener('loadedmetadata', updateDuration);
     audioElement.addEventListener('ended', handleEnded);
+    audioElement.addEventListener('error', handleError);
 
+    audioElement.src = audio.url;
+    
     return () => {
       audioElement.removeEventListener('timeupdate', updateTime);
       audioElement.removeEventListener('loadedmetadata', updateDuration);
       audioElement.removeEventListener('ended', handleEnded);
+      audioElement.removeEventListener('error', handleError);
     };
-  }, [audio]);
+  }, [audio?.url]);
 
   const handlePlayPause = () => {
     const audioElement = audioRef.current;
@@ -89,6 +100,8 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   };
 
   const handleDownload = () => {
+    if (!audio?.url) return;
+    
     const link = document.createElement('a');
     link.href = audio.url;
     link.download = audio.filename || 'audio.mp3';
@@ -100,19 +113,20 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   if (compact) {
     return (
       <div className={cn('flex items-center space-x-2 p-2 bg-white rounded-lg border', className)}>
-        <audio ref={audioRef} src={audio.url} />
+        <audio ref={audioRef} preload="metadata" />
         
         <Button
           size="icon"
           variant="ghost"
           onClick={handlePlayPause}
           className="h-8 w-8"
+          disabled={!audio?.url}
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
         
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{audio.filename || 'Audio File'}</p>
+          <p className="text-sm font-medium truncate">{audio?.filename || 'Audio File'}</p>
           <p className="text-xs text-muted-foreground">
             {formatTime(currentTime)} / {formatTime(duration)}
           </p>
@@ -123,6 +137,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
           variant="ghost"
           onClick={handleDownload}
           className="h-8 w-8"
+          disabled={!audio?.url}
         >
           <Download className="h-3 w-3" />
         </Button>
@@ -132,13 +147,13 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
 
   return (
     <div className={cn('bg-white rounded-lg border p-4', className)}>
-      <audio ref={audioRef} src={audio.url} />
+      <audio ref={audioRef} preload="metadata" />
       
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-medium">{audio.filename || 'Audio File'}</h3>
+          <h3 className="font-medium">{audio?.filename || 'Audio File'}</h3>
           <p className="text-sm text-muted-foreground">
-            {Math.round((audio.size || 0) / 1024)}KB • {formatTime(audio.duration || 0)}
+            {Math.round((audio?.size || 0) / 1024)}KB • {formatTime(duration)}
           </p>
         </div>
         
@@ -146,6 +161,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
           size="icon"
           variant="ghost"
           onClick={handleDownload}
+          disabled={!audio?.url}
         >
           <Download className="h-4 w-4" />
         </Button>

@@ -17,7 +17,6 @@ interface ScriptSegmentProps {
   onUpdate: (segmentId: string, updates: Partial<VideoSegment>) => void;
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
-  onRegenerate: (segmentId: string) => void;
   isDragging?: boolean;
 }
 
@@ -27,14 +26,13 @@ export function ScriptSegment({
   onUpdate,
   onApprove,
   onReject,
-  onRegenerate,
   isDragging = false
 }: ScriptSegmentProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedScript, setEditedScript] = useState(segment.script);
   const [editedVideoPrompt, setEditedVideoPrompt] = useState(segment.videoPrompt);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('kore');
+  const [selectedVoice, setSelectedVoice] = useState('callirrhoe');
 
   const { currentProject, generateSegmentAudio, selectSegmentAudio } = useProjectStore();
   const { addToast } = useUIStore();
@@ -172,14 +170,6 @@ export function ScriptSegment({
                 <Edit2 className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onRegenerate(segment.id)}
-              disabled={isApprovalStatus(currentStatus, 'approved')}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </CardHeader>
@@ -247,18 +237,35 @@ export function ScriptSegment({
                     className="text-xs border border-gray-300 rounded px-2 py-1"
                     disabled={isGeneratingAudio}
                   >
-                    <option value="kore">Kore (Firm)</option>
-                    <option value="puck">Puck (Upbeat)</option>
-                    <option value="charon">Charon (Informative)</option>
-                    <option value="leda">Leda (Youthful)</option>
-                    <option value="enceladus">Enceladus (Breathy)</option>
-                    <option value="fenrir">Fenrir (Excitable)</option>
-                    <option value="aoede">Aoede (Breezy)</option>
-                    <option value="autonoe">Autonoe (Bright)</option>
-                    <option value="iapetus">Iapetus (Clear)</option>
-                    <option value="algieba">Algieba (Smooth)</option>
-                    <option value="gacrux">Gacrux (Mature)</option>
-                    <option value="achird">Achird (Friendly)</option>
+                    <option value="kore">Kore</option>
+                    <option value="puck">Puck</option>
+                    <option value="charon">Charon</option>
+                    <option value="fenrir">Fenrir</option>
+                    <option value="leda">Leda</option>
+                    <option value="orus">Orus</option>
+                    <option value="aoede">Aoede</option>
+                    <option value="callirrhoe">Callirrhoe</option>
+                    <option value="autonoe">Autonoe</option>
+                    <option value="enceladus">Enceladus</option>
+                    <option value="iapetus">Iapetus</option>
+                    <option value="umbriel">Umbriel</option>
+                    <option value="algieba">Algieba</option>
+                    <option value="despina">Despina</option>
+                    <option value="erinome">Erinome</option>
+                    <option value="algenib">Algenib</option>
+                    <option value="rasalgethi">Rasalgethi</option>
+                    <option value="laomedeia">Laomedeia</option>
+                    <option value="achernar">Achernar</option>
+                    <option value="alnilam">Alnilam</option>
+                    <option value="schedar">Schedar</option>
+                    <option value="gacrux">Gacrux</option>
+                    <option value="pulcherrima">Pulcherrima</option>
+                    <option value="achird">Achird</option>
+                    <option value="zubenelgenubi">Zubenelgenubi</option>
+                    <option value="vindemiatrix">Vindemiatrix</option>
+                    <option value="sadachbia">Sadachbia</option>
+                    <option value="sadaltager">Sadaltager</option>
+                    <option value="sulafat">Sulafat</option>                  
                   </select>
                   <Button
                     size="sm"
@@ -286,7 +293,7 @@ export function ScriptSegment({
                 <div className="space-y-3">
                   {segment.audios.length > 1 && (
                     <div className="flex items-center space-x-2">
-                      <Label className="text-sm font-medium">Audio Version:</Label>
+                      <Label className="text-sm font-medium">Version:</Label>
                       <Select
                         value={segment.audios.find(a => a.isSelected)?.id || segment.audios[0]?.id}
                         onValueChange={(audioId) => handleAudioSelection(audioId)}
@@ -295,10 +302,13 @@ export function ScriptSegment({
                           <SelectValue placeholder="Select audio version" />
                         </SelectTrigger>
                         <SelectContent>
-                          {segment.audios.map((audio, index) => (
+                          {segment.audios.sort((a, b) => {
+                            const x = new Date(a.createdAt).getTime()
+                            const y = new Date(b.createdAt).getTime()
+                            return y - x
+                          }).map((audio) => (
                             <SelectItem key={audio.id} value={audio.id}>
-                              {audio.voice ? `${audio.voice} Voice` : `Version ${index + 1}`}
-                              {audio.isSelected && ' (Selected)'}
+                              {audio.voice} - {new Date(audio.createdAt).toLocaleString()}
                             </SelectItem>
                           ))}
                         </SelectContent>

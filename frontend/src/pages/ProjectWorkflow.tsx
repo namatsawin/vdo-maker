@@ -19,7 +19,6 @@ import { apiClient } from '@/lib/api';
 
 export function ProjectWorkflow() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const stage = searchParams.get('stage') || 'script';
   
@@ -27,12 +26,11 @@ export function ProjectWorkflow() {
   const { addToast } = useUIStore();
   
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
   const [showSegmentDialog, setShowSegmentDialog] = useState(false);
 
   useEffect(() => {
     if (id) loadProject(id)
-  }, [])
+  }, [id])
 
   const handleGenerateSegments = useCallback(async (request: SegmentGenerationRequest) => {
     if (!project) return;
@@ -65,15 +63,6 @@ export function ProjectWorkflow() {
       setIsGenerating(false);
     }
   }, [project, updateProject, addToast]);
-
-  useEffect(() => {
-    if (!project) {
-      navigate('/projects');
-      return;
-    }
-
-    // Auto-generation removed - now user must explicitly choose model
-  }, [project, navigate, stage]);
 
   const handleSegmentUpdate = (segmentId: string, updates: Partial<VideoSegment>) => {
     if (!project) return;
@@ -119,45 +108,6 @@ export function ProjectWorkflow() {
       title: 'Segment Rejected',
       message: `${stage.charAt(0).toUpperCase() + stage.slice(1)} segment has been rejected for revision`,
     });
-  };
-
-  const handleRegenerate = async (segmentId: string) => {
-    if (!project) return;
-    setIsRegenerating(segmentId);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      if (stage === 'script') {
-        const newScript = `This is a regenerated script for segment ${segmentId}. The AI has created new content based on your feedback and requirements.`;
-        const newVideoPrompt = `A regenerated visual prompt showing different scenes and actions for segment ${segmentId}.`;
-        
-        handleSegmentUpdate(segmentId, {
-          script: newScript,
-          videoPrompt: newVideoPrompt,
-          scriptApprovalStatus: ApprovalStatus.DRAFT,
-        });
-      } else {
-        const field = getApprovalField(stage);
-        handleSegmentUpdate(segmentId, {
-          [field]: 'DRAFT' as ApprovalStatus,
-        });
-      }
-
-      addToast({
-        type: 'success',
-        title: 'Segment Regenerated',
-        message: 'New content has been generated for this segment',
-      });
-    } catch {
-      addToast({
-        type: 'error',
-        title: 'Regeneration Failed',
-        message: 'Failed to regenerate segment. Please try again.',
-      });
-    } finally {
-      setIsRegenerating(null);
-    }
   };
 
   const handleAddSegment = () => {
@@ -459,12 +409,6 @@ export function ProjectWorkflow() {
         ) : (
           project.segments.map((segment, index) => (
             <div key={segment.id} className="relative">
-              {isRegenerating === segment.id && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-lg">
-                  <LoadingSpinner text="Regenerating segment..." />
-                </div>
-              )}
-              
               {stage === 'script' && (
                 <ScriptSegment
                   segment={segment}
@@ -472,7 +416,6 @@ export function ProjectWorkflow() {
                   onUpdate={handleSegmentUpdate}
                   onApprove={handleApprove}
                   onReject={handleReject}
-                  onRegenerate={handleRegenerate}
                 />
               )}
               
@@ -482,8 +425,6 @@ export function ProjectWorkflow() {
                   index={index}
                   onApprove={handleApprove}
                   onReject={handleReject}
-                  onRegenerate={handleRegenerate}
-                  isRegenerating={isRegenerating === segment.id}
                 />
               )}
 
@@ -493,8 +434,6 @@ export function ProjectWorkflow() {
                   index={index}
                   onApprove={handleApprove}
                   onReject={handleReject}
-                  onRegenerate={handleRegenerate}
-                  isRegenerating={isRegenerating === segment.id}
                 />
               )}
             </div>
