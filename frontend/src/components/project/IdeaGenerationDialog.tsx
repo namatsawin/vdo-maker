@@ -11,7 +11,6 @@ import { GeminiModel } from '@/types/shared';
 interface VideoIdea {
   title: string;
   description: string;
-  story: string;
   isFactBased: boolean;
 }
 
@@ -23,6 +22,7 @@ interface IdeaGenerationDialogProps {
 
 export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGenerationDialogProps) {
   const [topic, setTopic] = useState('');
+  const [tempTopic, setTempTopic] = useState(topic)
   const [selectedModel, setSelectedModel] = useState<string>(GeminiModel.GEMINI_2_5_FLASH);
   const [ideas, setIdeas] = useState<VideoIdea[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,12 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
       if (response.success) {
         const ideas= response.data?.ideas ?? []
 
-        setIdeas((prevIdeas) => [...prevIdeas, ...ideas]);
+        if (topic === tempTopic) {
+          setIdeas((prevIdeas) => [...prevIdeas, ...ideas]);
+        } else {
+          setIdeas(ideas);
+        }
+        setTempTopic(topic)
       } else {
         setError(response.data.error || 'Failed to generate ideas');
       }
@@ -164,10 +169,6 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                     <CardContent className="pt-0">
                       <p className="text-gray-600 mb-3 font-medium">{idea.description}</p>
                       
-                      <div className="bg-gray-50 rounded-lg p-3 mb-4 overflow-y-auto max-h-32">
-                        <p className="text-sm text-gray-600">{idea.story}</p>
-                      </div>
-
                       <Button
                         onClick={() => handleSelectIdea(idea)}
                         className="w-full"

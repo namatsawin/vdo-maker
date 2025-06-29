@@ -4,18 +4,36 @@ import { imagen4Service } from '@/services/imagen4Service';
 import { klingAIService } from '@/services/klingAIService';
 import { ApiResponse, ScriptGenerationRequest } from '@/types';
 import { createError } from '@/middleware/errorHandler';
+import prisma from '@/config/database';
 
 export const generateScript = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { title, description, model } = req.body;
+    const { title, description, model, systemInstructionId } = req.body;
 
     if (!title) {
       throw createError('Title is required', 400);
     }
 
+    if (!model) {
+      throw createError('Model is required', 400);
+    }
+
+    if (!systemInstructionId) {
+      throw createError('systemInstructionId is required', 400);
+    }
+
+    const instruction = await prisma.systemInstruction.findUnique({
+      where: { id: systemInstructionId, isActive: true }
+    });
+
+    if (!instruction) {
+      throw createError('systemInstruction could not be found', 404);
+    }
+
     const request: ScriptGenerationRequest = {
       title,
       description,
+      systemInstruction: instruction.instruction,
       model
     };
 
@@ -26,7 +44,7 @@ export const generateScript = async (req: Request, res: Response, next: NextFunc
       data: {
         segments,
         generatedAt: new Date().toISOString(),
-        model: model || 'gemini-1.5-flash'
+        model: model
       }
     };
 

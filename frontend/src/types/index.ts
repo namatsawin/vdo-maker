@@ -30,18 +30,6 @@ export interface LoadingState {
   message?: string;
 }
 
-// Form Types
-export interface ProjectCreationForm {
-  name: string;
-  description: string;
-  storyInput: string;
-}
-
-export interface SegmentEditForm {
-  script: string;
-  videoPrompt: string;
-}
-
 // UI Types
 export interface Toast {
   id: string;
@@ -60,7 +48,6 @@ export interface LoadingState {
 export interface ProjectCreationForm {
   name: string;
   description: string;
-  storyInput: string;
 }
 
 export interface SegmentEditForm {

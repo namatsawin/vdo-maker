@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Edit2, Check, X, RotateCcw, GripVertical, Volume2, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Edit2, Check, X, GripVertical, Volume2, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
@@ -38,6 +38,18 @@ export function ScriptSegment({
   const { addToast } = useUIStore();
 
   const currentStatus = segment.scriptApprovalStatus;
+
+  // Exit editing mode if segment becomes approved
+  useEffect(() => {
+    if (isApprovalStatus(currentStatus, 'approved') && isEditing) {
+      setIsEditing(false);
+      addToast({
+        type: 'info',
+        title: 'Editing Disabled',
+        message: 'Cannot edit approved segment. Editing mode has been disabled.',
+      });
+    }
+  }, [currentStatus, isEditing, addToast]);
 
   const selectedAudio = segment.audios.find(item => item.isSelected)
   const handleSave = () => {
@@ -161,14 +173,29 @@ export function ScriptSegment({
             {getStatusBadge(currentStatus)}
           </div>
           <div className="flex items-center space-x-2">
-            {!isEditing && (
+            {!isEditing && !isApprovalStatus(currentStatus, 'approved') && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setIsEditing(true)}
+                title="Edit segment content"
               >
                 <Edit2 className="h-4 w-4" />
               </Button>
+            )}
+            {isApprovalStatus(currentStatus, 'approved') && (
+              <div className="flex items-center space-x-1">
+                <Lock className="h-3 w-3 text-green-600" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled
+                  title="Cannot edit approved segment"
+                  className="cursor-not-allowed"
+                >
+                  <Edit2 className="h-4 w-4 opacity-30" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -212,16 +239,33 @@ export function ScriptSegment({
           </>
         ) : (
           <>
+            {isApprovalStatus(currentStatus, 'approved') && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-md mb-4">
+                <Lock className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-green-700 font-medium">
+                  This segment is approved and cannot be edited
+                </span>
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label className="text-sm font-medium">Script</Label>
-              <p className="text-sm text-muted-foreground bg-white p-3 rounded border">
+              <p className={`text-sm p-3 rounded border ${
+                isApprovalStatus(currentStatus, 'approved') 
+                  ? 'text-gray-700 bg-gray-50 border-gray-200' 
+                  : 'text-muted-foreground bg-white'
+              }`}>
                 {segment.script}
               </p>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">Video Prompt</Label>
-              <p className="text-sm text-muted-foreground bg-white p-3 rounded border">
+              <p className={`text-sm p-3 rounded border ${
+                isApprovalStatus(currentStatus, 'approved') 
+                  ? 'text-gray-700 bg-gray-50 border-gray-200' 
+                  : 'text-muted-foreground bg-white'
+              }`}>
                 {segment.videoPrompt}
               </p>
             </div>
@@ -230,13 +274,14 @@ export function ScriptSegment({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Audio Preview</Label>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedVoice}
-                    onChange={(e) => setSelectedVoice(e.target.value)}
-                    className="text-xs border border-gray-300 rounded px-2 py-1"
-                    disabled={isGeneratingAudio}
-                  >
+                {!isApprovalStatus(currentStatus, 'approved') && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedVoice}
+                      onChange={(e) => setSelectedVoice(e.target.value)}
+                      className="text-xs border border-gray-300 rounded px-2 py-1"
+                      disabled={isGeneratingAudio}
+                    >
                     <option value="kore">Kore</option>
                     <option value="puck">Puck</option>
                     <option value="charon">Charon</option>
@@ -286,7 +331,8 @@ export function ScriptSegment({
                       </>
                     )}
                   </Button>
-                </div>
+                  </div>
+                )}
               </div>
               
               {segment.audios && segment.audios.length > 0 ? (

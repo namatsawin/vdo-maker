@@ -18,17 +18,13 @@ const VIDEO_IDEAS_SCHEMA = {
         type: Type.STRING,
         description: "Brief description of the video project"
       },
-      story: {
-        type: Type.STRING,
-        description: "Detailed story content and narrative for the video"
-      },
       isFactBased: {
         type: Type.BOOLEAN,
         description: "Whether the story content is based on verified facts and research"
       }
     },
-    required: ["title", "description", "story", "isFactBased"],
-    propertyOrdering: ["title", "description", "story", "isFactBased"]
+    required: ["title", "description", "isFactBased"],
+    propertyOrdering: ["title", "description", "isFactBased"]
   }
 };
 
@@ -354,7 +350,7 @@ class GeminiService {
     }
   }
 
-  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<Array<{ title: string; description: string; story: string; isFactBased: boolean }>> {
+  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<Array<{ title: string; description: string; isFactBased: boolean }>> {
     const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
     const count = request.count || 5;
     
@@ -364,8 +360,7 @@ Generate ${count} creative video ideas for the topic: "${request.topic}"
 For each idea, provide:
 1. A catchy, engaging title (will be used as project name)
 2. A brief description (1-2 sentences describing the video concept)
-3. A detailed story (comprehensive narrative content for the video, including key points, structure, and what the video will cover)
-4. Fact verification (determine if the story content is based on verifiable facts and research)
+3. Fact verification (determine if the story content is based on verifiable facts and research)
 
 IMPORTANT: Make each idea VERY SPECIFIC and focused on particular subjects, phenomena, or cases rather than broad topics.
 
@@ -384,13 +379,6 @@ Focus on:
 - Unique cultural or natural phenomena
 
 Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
-
-The story should be detailed enough to serve as the foundation for script generation, including:
-- Main narrative arc with specific details
-- Key points to cover with concrete examples
-- Visual elements to include
-- Target audience considerations
-- Tone and style suggestions
 
 For fact verification (isFactBased):
 - Set to true if the story is based on documented facts, scientific research, historical events, or verifiable information
@@ -420,7 +408,7 @@ Ensure each idea is unique, creative, specific, and actionable for video product
       }
 
       // Parse the structured JSON response - it's already an array
-      const ideas: Array<{ title: string; description: string; story: string; isFactBased: boolean }> = JSON.parse(text);
+      const ideas: Array<{ title: string; description: string; isFactBased: boolean }> = JSON.parse(text);
 
       logger.info(`Successfully generated ${ideas.length} video ideas with structured output`);
       return ideas;

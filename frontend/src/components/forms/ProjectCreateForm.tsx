@@ -14,7 +14,6 @@ import { Loader2, Sparkles, Lightbulb } from 'lucide-react';
 interface VideoIdea {
   title: string;
   description: string;
-  story: string;
   isFactBased: boolean;
 }
 
@@ -26,7 +25,6 @@ export function ProjectCreateForm() {
   const [formData, setFormData] = useState<ProjectCreationForm>({
     name: '',
     description: '',
-    storyInput: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +35,6 @@ export function ProjectCreateForm() {
     setFormData({
       name: idea.title,
       description: idea.description,
-      storyInput: idea.story
     });
     
     addToast({
@@ -58,12 +55,6 @@ export function ProjectCreateForm() {
       newErrors.description = 'Project description is required';
     }
     
-    if (!formData.storyInput.trim()) {
-      newErrors.storyInput = 'Story input is required';
-    } else if (formData.storyInput.trim().length < 20) {
-      newErrors.storyInput = 'Story should be at least 20 characters long';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -80,7 +71,6 @@ export function ProjectCreateForm() {
       const project = await createProject({
         title: formData.name,
         description: formData.description,
-        story: formData.storyInput
       });
 
       addToast({
@@ -127,6 +117,21 @@ export function ProjectCreateForm() {
         
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowIdeaDialog(true)}
+                  disabled={isSubmitting}
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  Get AI Ideas
+                </Button>
+              </div>
+            </div>
+
             {/* Project Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Project Name *</Label>
@@ -147,9 +152,8 @@ export function ProjectCreateForm() {
             {/* Project Description */}
             <div className="space-y-2">
               <Label htmlFor="description">Project Description *</Label>
-              <Input
+              <Textarea
                 id="description"
-                type="text"
                 placeholder="Brief description of your video project"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
@@ -161,53 +165,12 @@ export function ProjectCreateForm() {
               )}
             </div>
 
-            {/* Story Input */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="storyInput">Story & Content *</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowIdeaDialog(true)}
-                  className="flex items-center gap-2"
-                  disabled={isSubmitting}
-                >
-                  <Lightbulb className="h-4 w-4" />
-                  Get AI Ideas
-                </Button>
-              </div>
-              <Textarea
-                id="storyInput"
-                placeholder="Describe what you want your video to be about. Include key points, topics, or the story you want to tell. The more detail you provide, the better the AI can generate relevant script segments."
-                value={formData.storyInput}
-                onChange={(e) => handleInputChange('storyInput', e.target.value)}
-                className={`min-h-[120px] ${errors.storyInput ? 'border-red-500' : ''}`}
-                disabled={isSubmitting}
-              />
-              {errors.storyInput && (
-                <p className="text-sm text-red-600">{errors.storyInput}</p>
-              )}
-              <p className="text-sm text-gray-500">
-                {formData.storyInput.length}/500 characters (minimum 20)
-              </p>
-            </div>
-
             {/* Submit Button */}
-            <div className="flex items-center justify-between pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/projects')}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              
+            <div className="flex items-center justify-center pt-4">
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 border w-full"
               >
                 {isSubmitting ? (
                   <>
