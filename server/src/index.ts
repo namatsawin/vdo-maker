@@ -70,10 +70,13 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+import systemInstructionRoutes from './routes/systemInstructionRoutes';
+
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 app.use(`/api/${API_VERSION}/ai`, aiRoutes);
 app.use(`/api/${API_VERSION}/projects`, projectRoutes);
+app.use(`/api/${API_VERSION}/system-instructions`, systemInstructionRoutes);
 
 app.get(`/api/${API_VERSION}`, (req, res) => {
   res.json({
@@ -85,7 +88,8 @@ app.get(`/api/${API_VERSION}`, (req, res) => {
       auth: `/api/${API_VERSION}/auth`,
       projects: `/api/${API_VERSION}/projects`,
       ai: `/api/${API_VERSION}/ai`,
-      upload: `/api/${API_VERSION}/upload`
+      upload: `/api/${API_VERSION}/upload`,
+      systemInstructions: `/api/${API_VERSION}/system-instructions`
     }
   });
 });

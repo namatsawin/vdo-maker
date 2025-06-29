@@ -28,6 +28,39 @@ export const ApprovalStatus = {
 
 export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus];
 
+// System Instruction types
+export interface SystemInstruction {
+  id: string;
+  name: string;
+  description?: string;
+  instruction: string;
+  category: string;
+  isActive: boolean;
+  isDefault: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  creator?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface SystemInstructionCategory {
+  name: string;
+  count: number;
+  label: string;
+}
+
+// Segment Generation types
+export interface SegmentGenerationRequest {
+  model?: string;
+  systemInstructionId?: string;
+  customInstruction?: string;
+  segmentCount?: number;
+}
+
 export const MediaType = {
   IMAGE: 'IMAGE',
   VIDEO: 'VIDEO',

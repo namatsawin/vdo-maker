@@ -10,6 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SystemInstruction {
+  id          String   @id @default(cuid())
+  name        String   // Display name for the instruction
+  description String?  // Optional description
+  instruction String   // The actual system instruction text
+  category    String   @default("general") // Category for organization (general, educational, marketing, etc.)
+  isActive    Boolean  @default(true) // Whether this instruction is available for use
+  isDefault   Boolean  @default(false) // Whether this is a default instruction
+  createdBy   String   // User who created this instruction
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  creator     User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@map("system_instructions")
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -20,6 +38,7 @@ model User {
   
   // Relations
   projects  Project[]
+  systemInstructions SystemInstruction[]
   
   @@map("users")
 }

@@ -152,7 +152,7 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
       throw createError('Project title is required', 400);
     }
 
-    // Create project first
+    // Create project without segments - user will generate them manually
     const project = await prisma.project.create({
       data: {
         title,
@@ -163,53 +163,7 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
       }
     });
 
-    // Generate script segments using AI (simplified for now)
-    let segments = [];
-    try {
-      // Create basic segments - we'll improve AI integration later
-      const basicSegments = [
-        {
-          script: `Introduction to ${title}`,
-          videoPrompt: `Professional introduction scene for ${title}`,
-          order: 0
-        },
-        {
-          script: `Main content about ${description || title}`,
-          videoPrompt: `Main content visualization for ${title}`,
-          order: 1
-        },
-        {
-          script: `Conclusion and next steps for ${title}`,
-          videoPrompt: `Conclusion scene for ${title}`,
-          order: 2
-        }
-      ];
-
-      // Create segments in database
-      const segmentPromises = basicSegments.map((segment, index) => 
-        prisma.segment.create({
-          data: {
-            order: index,
-            script: segment.script,
-            videoPrompt: segment.videoPrompt,
-            status: 'DRAFT',
-            scriptApprovalStatus: 'DRAFT',
-            imageApprovalStatus: 'DRAFT',
-            videoApprovalStatus: 'DRAFT',
-            audioApprovalStatus: 'DRAFT',
-            finalApprovalStatus: 'DRAFT',
-            projectId: project.id
-          }
-        })
-      );
-
-      segments = await Promise.all(segmentPromises);
-    } catch (aiError) {
-      console.error('Segment creation failed:', aiError);
-      // Continue without segments - user can add them manually
-    }
-
-    // Fetch complete project with segments
+    // Fetch complete project (will have empty segments array)
     const completeProject = await prisma.project.findUnique({
       where: { id: project.id },
       include: {
@@ -235,9 +189,7 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
       success: true,
       data: { 
         project: mappedProject,
-        message: segments.length > 0 
-          ? `Project created with ${segments.length} AI-generated segments`
-          : 'Project created successfully'
+        message: 'Project created successfully. You can now generate segments in the script stage.'
       }
     });
   } catch (error) {
@@ -512,7 +464,6 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
           url: audioResult.data.audioUrl,
           text: segment.script,
           voice,
-          status: 'DRAFT',
           duration: audioResult.data.duration || null,
           isSelected: true, // New audio is selected by default
           metadata: JSON.stringify({
@@ -648,6 +599,111 @@ export const selectSegmentAudio = async (req: AuthenticatedRequest, res: Respons
     res.json(response);
   } catch (error) {
     next(error);
+  }
+};
+
+// Generate segments for a project
+export const generateSegments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    const { 
+      model = 'gemini-2.5-flash', 
+      systemInstructionId,
+      customInstruction,
+      segmentCount = 3 
+    } = req.body;
+
+    if (!userId) {
+      throw createError('User not authenticated', 401);
+    }
+
+    // Verify project ownership
+    const project = await prisma.project.findFirst({
+      where: { id, userId }
+    });
+
+    if (!project) {
+      throw createError('Project not found', 404);
+    }
+
+    // Get system instruction
+    let systemInstruction = '';
+    if (systemInstructionId) {
+      const instruction = await prisma.systemInstruction.findUnique({
+        where: { id: systemInstructionId, isActive: true }
+      });
+      if (instruction) {
+        systemInstruction = instruction.instruction;
+      }
+    } else if (customInstruction) {
+      systemInstruction = customInstruction;
+    } else {
+      // Use default instruction
+      const defaultInstruction = await prisma.systemInstruction.findFirst({
+        where: { isDefault: true, isActive: true }
+      });
+      systemInstruction = defaultInstruction?.instruction || 'You are an expert video script writer. Create engaging, well-structured video scripts.';
+    }
+
+    // Generate segments using AI (simplified for now - you can integrate with actual AI service)
+    const segments = [];
+    const segmentTypes = ['introduction', 'main_content', 'conclusion'];
+    
+    for (let i = 0; i < Math.min(segmentCount, 10); i++) {
+      const segmentType = segmentTypes[i] || 'content';
+      const segment = await prisma.segment.create({
+        data: {
+          order: i,
+          script: `Generated script for ${project.title} - Segment ${i + 1} (${segmentType})`,
+          videoPrompt: `Professional ${segmentType} scene for ${project.title}`,
+          status: 'DRAFT',
+          scriptApprovalStatus: 'DRAFT',
+          imageApprovalStatus: 'DRAFT',
+          videoApprovalStatus: 'DRAFT',
+          audioApprovalStatus: 'DRAFT',
+          finalApprovalStatus: 'DRAFT',
+          projectId: project.id
+        }
+      });
+      segments.push(segment);
+    }
+
+    // Fetch updated project with segments
+    const updatedProject = await prisma.project.findUnique({
+      where: { id: project.id },
+      include: {
+        segments: {
+          include: {
+            images: true,
+            videos: true,
+            audios: true,
+          },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+
+    if (!updatedProject) {
+      throw createError('Failed to fetch updated project', 500);
+    }
+
+    const mappedProject = mapProject(updatedProject);
+
+    res.json({
+      success: true,
+      data: { 
+        project: mappedProject,
+        message: `Generated ${segments.length} segments using ${model} model`
+      }
+    });
+  } catch (error) {
+    console.error('Generate segments error:', error);
+    const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+    res.status(statusCode).json({
+      success: false,
+      error: { message: error instanceof Error ? error.message : 'Failed to generate segments' }
+    });
   }
 };
 

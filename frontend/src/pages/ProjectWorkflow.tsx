@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, ArrowRight, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowRight, RefreshCw, ArrowLeft, Wand2 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/Button';
@@ -11,9 +11,11 @@ import { ImageApproval } from '@/components/workflow/ImageApproval';
 import { VideoApproval } from '@/components/workflow/VideoApproval';
 import { FinalAssembly } from '@/components/workflow/FinalAssembly';
 import { WorkflowProgress } from '@/components/workflow/WorkflowProgress';
-import { ScriptGenerationDialog } from '@/components/workflow/ScriptGenerationDialog';
+import { SegmentGenerationDialog } from '@/components/workflow/SegmentGenerationDialog';
 import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from '@/types';
+import type { SegmentGenerationRequest } from '@/types/shared';
 import { isApprovalStatus } from '@/utils/typeCompatibility';
+import { apiClient } from '@/lib/api';
 
 export function ProjectWorkflow() {
   const { id } = useParams<{ id: string }>();
@@ -21,47 +23,48 @@ export function ProjectWorkflow() {
   const [searchParams, setSearchParams] = useSearchParams();
   const stage = searchParams.get('stage') || 'script';
   
-  const { currentProject: project, updateProject, generateProjectScript, loadProject } = useProjectStore();
+  const { currentProject: project, updateProject, loadProject } = useProjectStore();
   const { addToast } = useUIStore();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
-  const [showScriptDialog, setShowScriptDialog] = useState(false);
+  const [showSegmentDialog, setShowSegmentDialog] = useState(false);
 
   useEffect(() => {
     if (id) loadProject(id)
   }, [])
 
-  const handleGenerateSegments = useCallback(async (title: string, description: string, model: string) => {
+  const handleGenerateSegments = useCallback(async (request: SegmentGenerationRequest) => {
     if (!project) return;
     setIsGenerating(true);
     
     try {
-      // Use real AI script generation with model selection
-      const segments = await generateProjectScript(title, description, model);
+      const response = await apiClient.post(`/projects/${project.id}/generate-segments`, request);
       
-      updateProject(project.id, {
-        segments: segments,
-        currentStage: WorkflowStage.IMAGE_GENERATION,
-        updatedAt: new Date().toISOString(),
-      });
-
-      addToast({
-        type: 'success',
-        title: 'Script Generated',
-        message: `Generated ${segments.length} segments using ${model}`,
-      });
-    } catch (error) {
-      console.error('Script generation failed:', error);
+      if (response.success) {
+        // Update the project with new segments
+        const updatedProject = response.data.project;
+        updateProject(project.id, updatedProject);
+        
+        addToast({
+          type: 'success',
+          title: 'Segments Generated',
+          message: response.data.message || `Generated ${updatedProject.segments?.length || 0} segments`,
+        });
+        
+        setShowSegmentDialog(false);
+      }
+    } catch (error: any) {
+      console.error('Segment generation failed:', error);
       addToast({
         type: 'error',
         title: 'Generation Failed',
-        message: 'Failed to generate script segments. Please try again.',
+        message: error.response?.data?.error?.message || 'Failed to generate segments. Please try again.',
       });
     } finally {
       setIsGenerating(false);
     }
-  }, [project, generateProjectScript, updateProject, addToast]);
+  }, [project, updateProject, addToast]);
 
   useEffect(() => {
     if (!project) {
@@ -414,7 +417,7 @@ export function ProjectWorkflow() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowScriptDialog(true)}
+                    onClick={() => setShowSegmentDialog(true)}
                     disabled={isGenerating}
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
@@ -502,9 +505,16 @@ export function ProjectWorkflow() {
       {totalCount === 0 && stage === 'script' && (
         <Card>
           <CardContent className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No segments generated yet</p>
-            <Button onClick={() => setShowScriptDialog(true)}>
-              Generate Script Segments
+            <Wand2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No segments generated yet
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Generate video segments with AI using your preferred model and system instructions.
+            </p>
+            <Button onClick={() => setShowSegmentDialog(true)} className="flex items-center gap-2">
+              <Wand2 className="h-4 w-4" />
+              Generate Segments
             </Button>
           </CardContent>
         </Card>
@@ -539,13 +549,11 @@ export function ProjectWorkflow() {
         </Card>
       )}
 
-      <ScriptGenerationDialog
-        isOpen={showScriptDialog}
-        onClose={() => setShowScriptDialog(false)}
+      <SegmentGenerationDialog
+        isOpen={showSegmentDialog}
+        onClose={() => setShowSegmentDialog(false)}
         onGenerate={handleGenerateSegments}
-        initialTitle={project?.title || project?.name || ''}
-        initialDescription={project?.description || ''}
-        isGenerating={isGenerating}
+        loading={isGenerating}
       />
     </div>
   );

@@ -8,7 +8,8 @@ import {
   deleteProject,
   updateSegment,
   generateSegmentAudio,
-  selectSegmentAudio
+  selectSegmentAudio,
+  generateSegments
 } from '../controllers/projectController';
 
 const router = Router();
@@ -22,6 +23,9 @@ router.get('/:id', getProject);
 router.post('/', createProject);
 router.put('/:id', updateProject);
 router.delete('/:id', deleteProject);
+
+// Generate segments for a project
+router.post('/:id/generate-segments', generateSegments);
 
 // Segment operations
 router.put('/:projectId/segments/:segmentId', updateSegment);
