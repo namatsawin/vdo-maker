@@ -135,9 +135,19 @@ export interface UpdateSegmentRequest {
 }
 
 // AI Service types
+export const GeminiModel = {
+  GEMINI_1_5_FLASH: 'gemini-1.5-flash',
+  GEMINI_1_5_FLASH_8B: 'gemini-1.5-flash-8b',
+  GEMINI_1_5_PRO: 'gemini-1.5-pro',
+  GEMINI_1_0_PRO: 'gemini-1.0-pro',
+} as const;
+
+export type GeminiModel = (typeof GeminiModel)[keyof typeof GeminiModel];
+
 export interface ScriptGenerationRequest {
   title: string;
   description?: string;
+  model?: GeminiModel;
 }
 
 export interface ScriptSegment {
@@ -161,6 +171,7 @@ export interface AudioGenerationRequest {
   text: string;
   voice: string;
   segmentId: string;
+  model?: GeminiModel;
 }
 
 // Job types

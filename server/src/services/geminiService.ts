@@ -1,10 +1,9 @@
-import { GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { logger } from '@/utils/logger';
-import { ScriptGenerationRequest, ScriptSegment } from '@/types';
+import { ScriptGenerationRequest, ScriptSegment, GeminiModel } from '@/types';
 
 class GeminiService {
-  private genAI: GoogleGenerativeAI;
-  private model: GenerativeModel;
+  private genAI: GoogleGenAI;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -12,12 +11,15 @@ class GeminiService {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro', systemInstruction: `` });
+    this.genAI = new GoogleGenAI({
+      apiKey: apiKey
+    });
   }
 
   async generateScript(request: ScriptGenerationRequest): Promise<ScriptSegment[]> {
     try {
+      const model = request.model || GeminiModel.GEMINI_1_5_FLASH;
+      
       const prompt = `
 Create a video script for the topic: "${request.title}"
 ${request.description ? `Description: ${request.description}` : ''}
@@ -40,9 +42,18 @@ Format your response as a JSON array with this structure:
 Make sure the script flows naturally from one segment to the next, and the video prompts are detailed enough for AI video generation.
 `;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      logger.info(`Generating script using model: ${model}`);
+
+      const result = await this.genAI.models.generateContent({
+        model: model,
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }]
+        }]
+      });
+
+      // Extract text from the new response format
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       logger.info('Gemini script generation response received');
 
@@ -63,18 +74,17 @@ Make sure the script flows naturally from one segment to the next, and the video
 
     } catch (error) {
       logger.error('Gemini script generation failed:', error);
-      
-      // Return fallback segments if API fails
-      return this.getFallbackSegments(request);
+      throw error;
     }
   }
 
-  async generateTextToSpeech(text: string, voice: string = 'default'): Promise<string> {
+  async generateTextToSpeech(text: string, voice: string = 'default', model?: GeminiModel): Promise<string> {
     try {
       // Note: Gemini doesn't have built-in TTS, so we'll simulate this
       // In a real implementation, you'd use Google Cloud Text-to-Speech API
       
-      logger.info(`TTS generation requested for voice: ${voice}`);
+      const selectedModel = model || GeminiModel.GEMINI_1_5_FLASH;
+      logger.info(`TTS generation requested for voice: ${voice}, model: ${selectedModel}`);
       
       // For MVP, we'll return a placeholder URL
       // In production, integrate with Google Cloud Text-to-Speech
@@ -92,43 +102,61 @@ Make sure the script flows naturally from one segment to the next, and the video
     }
   }
 
-  private getFallbackSegments(request: ScriptGenerationRequest): ScriptSegment[] {
-    return [
-      {
-        order: 1,
-        script: `Welcome to our exploration of ${request.title}. This is an exciting topic that we'll dive deep into today.`,
-        videoPrompt: 'Opening scene with engaging visuals related to the main topic, bright and welcoming atmosphere'
-      },
-      {
-        order: 2,
-        script: `Let's start by understanding the key concepts and why ${request.title} matters in today's world.`,
-        videoPrompt: 'Educational visuals showing key concepts, diagrams or illustrations that explain the main ideas'
-      },
-      {
-        order: 3,
-        script: `Now we'll look at practical examples and real-world applications that demonstrate these principles in action.`,
-        videoPrompt: 'Real-world examples, case studies, or demonstrations showing practical applications'
-      },
-      {
-        order: 4,
-        script: `To wrap up, let's summarize the key takeaways and how you can apply this knowledge moving forward.`,
-        videoPrompt: 'Conclusion scene with summary graphics, call-to-action visuals, and forward-looking imagery'
-      }
-    ];
-  }
-
-  async testConnection(): Promise<boolean> {
+  async testConnection(model?: GeminiModel): Promise<{ status: string; model: string }> {
     try {
-      const result = await this.model.generateContent('Hello, this is a test. Please respond with "Connection successful".');
-      const response = await result.response;
-      const text = response.text();
+      const selectedModel = model || GeminiModel.GEMINI_1_5_FLASH;
       
-      logger.info('Gemini connection test successful');
-      return text.toLowerCase().includes('connection successful') || text.length > 0;
+      // Test with a simple prompt
+      const result = await this.genAI.models.generateContent({
+        model: selectedModel,
+        contents: [{
+          role: 'user',
+          parts: [{ text: 'Hello, respond with "Connection successful"' }]
+        }]
+      });
+
+      // Extract text from the new response format
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      logger.info(`Gemini connection test successful with model: ${selectedModel}`);
+      
+      return {
+        status: 'connected',
+        model: selectedModel
+      };
+      
     } catch (error) {
       logger.error('Gemini connection test failed:', error);
-      return false;
+      return {
+        status: 'error',
+        model: model || GeminiModel.GEMINI_1_5_FLASH
+      };
     }
+  }
+
+  getAvailableModels(): { value: GeminiModel; label: string; description: string }[] {
+    return [
+      {
+        value: GeminiModel.GEMINI_1_5_FLASH,
+        label: 'Gemini 1.5 Flash',
+        description: 'Fast and efficient for most tasks'
+      },
+      {
+        value: GeminiModel.GEMINI_1_5_FLASH_8B,
+        label: 'Gemini 1.5 Flash-8B',
+        description: 'Smaller, faster model for simple tasks'
+      },
+      {
+        value: GeminiModel.GEMINI_1_5_PRO,
+        label: 'Gemini 1.5 Pro',
+        description: 'Most capable model for complex tasks'
+      },
+      {
+        value: GeminiModel.GEMINI_1_0_PRO,
+        label: 'Gemini 1.0 Pro',
+        description: 'Legacy model for compatibility'
+      }
+    ];
   }
 }
 

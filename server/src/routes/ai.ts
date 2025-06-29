@@ -7,13 +7,17 @@ import {
   getVideoStatus,
   cancelVideoGeneration,
   generateTTS, 
-  testAIConnection 
+  testAIConnection,
+  getAvailableModels
 } from '@/controllers/aiController';
 
 const router = Router();
 
 // All AI routes require authentication
 router.use(authenticateToken);
+
+// Model information
+router.get('/models', getAvailableModels);
 
 // Script generation
 router.post('/script/generate', generateScript);

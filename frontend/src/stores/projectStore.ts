@@ -27,10 +27,10 @@ interface ProjectActions {
   setError: (error: string | null) => void;
   
   // Real AI methods
-  generateProjectScript: (title: string, description?: string) => Promise<VideoSegment[]>;
+  generateProjectScript: (title: string, description?: string, model?: string) => Promise<VideoSegment[]>;
   generateSegmentImage: (segmentId: string, prompt: string, aspectRatio?: string) => Promise<string>;
   generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string) => Promise<{ taskId: string; videoUrl?: string }>;
-  generateSegmentAudio: (segmentId: string, text: string, voice?: string) => Promise<string>;
+  generateSegmentAudio: (segmentId: string, text: string, voice?: string, model?: string) => Promise<string>;
 }
 
 export const useProjectStore = create<ProjectState & ProjectActions>()((set) => ({
@@ -155,12 +155,12 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
   setError: (error) => set({ error }),
 
   // Real AI methods
-  generateProjectScript: async (title: string, description?: string) => {
+  generateProjectScript: async (title: string, description?: string, model?: string) => {
     set({ isLoading: true, error: null });
 
     try {
       const aiStore = useAIStore.getState();
-      const result = await aiStore.generateScript({ title, description });
+      const result = await aiStore.generateScript({ title, description, model });
 
       if (result && result.segments) {
         // Convert API response to VideoSegment format
@@ -251,12 +251,12 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
     }
   },
 
-  generateSegmentAudio: async (_segmentId: string, text: string, voice: string = 'default') => {
+  generateSegmentAudio: async (_segmentId: string, text: string, voice: string = 'default', model?: string) => {
     set({ isLoading: true, error: null });
 
     try {
       const aiStore = useAIStore.getState();
-      const result = await aiStore.generateAudio(text, voice);
+      const result = await aiStore.generateAudio(text, voice, model);
 
       if (result && result.audioUrl) {
         set({ isLoading: false });

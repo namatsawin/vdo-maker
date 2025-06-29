@@ -54,19 +54,6 @@ class ProjectService {
       throw new Error(response.error?.message || 'Failed to delete project');
     }
   }
-
-  // Update segment
-  async updateSegment(
-    projectId: string, 
-    segmentId: string, 
-    data: UpdateSegmentRequest
-  ): Promise<VideoSegment> {
-    const response = await apiClient.put(`/projects/${projectId}/segments/${segmentId}`, data);
-    if (!response.success) {
-      throw new Error(response.error?.message || 'Failed to update segment');
-    }
-    return response.data.segment;
-  }
 }
 
 export const projectService = new ProjectService();

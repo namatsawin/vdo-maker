@@ -15,9 +15,10 @@ interface AIActions {
   generateScript: (request: ScriptGenerationRequest) => Promise<any>;
   generateImage: (request: ImageGenerationRequest) => Promise<any>;
   generateVideo: (request: VideoGenerationRequest) => Promise<any>;
-  generateAudio: (text: string, voice?: string) => Promise<any>;
+  generateAudio: (text: string, voice?: string, model?: string) => Promise<any>;
   checkVideoStatus: (taskId: string) => Promise<any>;
   testConnection: () => Promise<any>;
+  getAvailableModels: () => Promise<any>;
   setError: (error: string | null) => void;
   clearError: () => void;
 }
@@ -128,11 +129,11 @@ export const useAIStore = create<AIState & AIActions>()((set) => ({
     }
   },
 
-  generateAudio: async (text: string, voice: string = 'default') => {
+  generateAudio: async (text: string, voice: string = 'default', model?: string) => {
     set({ isGenerating: true, error: null });
 
     try {
-      const response = await apiClient.generateTTS(text, voice);
+      const response = await apiClient.generateTTS(text, voice, model);
 
       if (response.success && response.data) {
         set({
@@ -188,6 +189,22 @@ export const useAIStore = create<AIState & AIActions>()((set) => ({
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Connection test failed';
+      set({ error: errorMessage });
+      throw error;
+    }
+  },
+
+  getAvailableModels: async () => {
+    try {
+      const response = await apiClient.getAvailableModels();
+
+      if (response.success && response.data) {
+        return response.data;
+      } else {
+        throw new Error(response.error?.message || 'Failed to fetch models');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch models';
       set({ error: errorMessage });
       throw error;
     }

@@ -24,6 +24,7 @@ export interface AuthResponse {
 export interface ScriptGenerationRequest {
   title: string;
   description?: string;
+  model?: string;
 }
 
 export interface ScriptSegment {
@@ -215,16 +216,28 @@ class ApiClient {
     return this.request(`/ai/video/status/${taskId}`);
   }
 
-  async generateTTS(text: string, voice: string = 'default'): Promise<ApiResponse<{
+  async generateTTS(text: string, voice: string = 'default', model?: string): Promise<ApiResponse<{
     audioUrl: string;
     text: string;
     voice: string;
+    model: string;
     generatedAt: string;
   }>> {
     return this.request('/ai/tts/generate', {
       method: 'POST',
-      body: JSON.stringify({ text, voice }),
+      body: JSON.stringify({ text, voice, model }),
     });
+  }
+
+  async getAvailableModels(): Promise<ApiResponse<{
+    models: Array<{
+      value: string;
+      label: string;
+      description: string;
+    }>;
+    retrievedAt: string;
+  }>> {
+    return this.request('/ai/models');
   }
 
   async testAIConnection(): Promise<ApiResponse<{

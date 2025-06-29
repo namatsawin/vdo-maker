@@ -320,7 +320,7 @@ export function ImageApproval({
 
         {/* Image Preview Modal */}
         {showPreview && selectedImage && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setShowPreview(false)}>
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowPreview(false)}>
             <div className="max-w-4xl max-h-full p-4">
               <img
                 src={selectedImage.url}

@@ -94,7 +94,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
 
   if (compact) {
     return (
-      <div className={cn('flex items-center space-x-2 p-2 bg-card rounded-lg border', className)}>
+      <div className={cn('flex items-center space-x-2 p-2 bg-white rounded-lg border', className)}>
         <audio ref={audioRef} src={audio.url} />
         
         <Button
@@ -126,7 +126,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   }
 
   return (
-    <div className={cn('bg-card rounded-lg border p-4', className)}>
+    <div className={cn('bg-white rounded-lg border p-4', className)}>
       <audio ref={audioRef} src={audio.url} />
       
       <div className="flex items-center justify-between mb-4">

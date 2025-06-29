@@ -12,6 +12,7 @@ import { VideoApproval } from '@/components/workflow/VideoApproval';
 import { AudioApproval } from '@/components/workflow/AudioApproval';
 import { FinalAssembly } from '@/components/workflow/FinalAssembly';
 import { WorkflowProgress } from '@/components/workflow/WorkflowProgress';
+import { ScriptGenerationDialog } from '@/components/workflow/ScriptGenerationDialog';
 import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from '@/types';
 import { isApprovalStatus } from '@/utils/typeCompatibility';
 
@@ -26,19 +27,17 @@ export function ProjectWorkflow() {
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
+  const [showScriptDialog, setShowScriptDialog] = useState(false);
 
   const project = projects.find(p => p.id === id);
 
-  const handleGenerateSegments = useCallback(async () => {
+  const handleGenerateSegments = useCallback(async (title: string, description: string, model: string) => {
     if (!project) return;
     setIsGenerating(true);
     
     try {
-      // Use real AI script generation
-      const segments = await generateProjectScript(
-        project.name || project.title || 'Untitled Project', 
-        project.description || ''
-      );
+      // Use real AI script generation with model selection
+      const segments = await generateProjectScript(title, description, model);
       
       updateProject(project.id, {
         segments: segments,
@@ -49,7 +48,7 @@ export function ProjectWorkflow() {
       addToast({
         type: 'success',
         title: 'Script Generated',
-        message: `Generated ${segments.length} video segments using AI`,
+        message: `Generated ${segments.length} segments using ${model}`,
       });
     } catch (error) {
       console.error('Script generation failed:', error);
@@ -69,11 +68,8 @@ export function ProjectWorkflow() {
       return;
     }
 
-    // Only generate segments if project has no segments and we're on script stage
-    if (project.segments.length === 0 && stage === 'script') {
-      handleGenerateSegments();
-    }
-  }, [project, navigate, stage, handleGenerateSegments]);
+    // Auto-generation removed - now user must explicitly choose model
+  }, [project, navigate, stage]);
 
   const handleSegmentUpdate = (segmentId: string, updates: Partial<VideoSegment>) => {
     if (!project) return;
@@ -442,7 +438,7 @@ export function ProjectWorkflow() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleGenerateSegments}
+                    onClick={() => setShowScriptDialog(true)}
                     disabled={isGenerating}
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
@@ -542,7 +538,7 @@ export function ProjectWorkflow() {
         <Card>
           <CardContent className="text-center py-12">
             <p className="text-muted-foreground mb-4">No segments generated yet</p>
-            <Button onClick={handleGenerateSegments}>
+            <Button onClick={() => setShowScriptDialog(true)}>
               Generate Script Segments
             </Button>
           </CardContent>
@@ -578,6 +574,15 @@ export function ProjectWorkflow() {
           </CardContent>
         </Card>
       )}
+
+      <ScriptGenerationDialog
+        isOpen={showScriptDialog}
+        onClose={() => setShowScriptDialog(false)}
+        onGenerate={handleGenerateSegments}
+        initialTitle={project?.title || project?.name || ''}
+        initialDescription={project?.description || ''}
+        isGenerating={isGenerating}
+      />
     </div>
   );
 }

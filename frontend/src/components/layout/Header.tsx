@@ -57,7 +57,7 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b bg-card">
+      <header className="border-b bg-white">
         <div className="flex h-16 items-center px-6">
           <Link to="/" className="flex items-center space-x-2">
             <Video className="h-6 w-6 text-primary" />

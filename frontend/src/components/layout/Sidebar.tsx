@@ -14,7 +14,7 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <div className="w-64 border-r bg-card">
+    <div className="w-64 border-r bg-white">
       <nav className="p-4 space-y-2">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href;

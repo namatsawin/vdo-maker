@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, RotateCcw, Play, Pause, Download, Volume2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ModelSelector } from '@/components/ui/ModelSelector';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { VideoSegment, ApprovalStatus } from '@/types';
@@ -45,6 +46,7 @@ export function AudioApproval({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('default');
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
   const [speed, setSpeed] = useState(1.0);
   
   const { generateSegmentAudio } = useProjectStore();
@@ -60,7 +62,7 @@ export function AudioApproval({
   const generateInitialAudio = async () => {
     setIsGenerating(true);
     try {
-      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice);
+      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel);
       
       const audio: GeneratedAudio = {
         id: `audio-${segment.id}`,
@@ -77,7 +79,7 @@ export function AudioApproval({
       addToast({
         type: 'success',
         title: 'Audio Generated',
-        message: 'Voice narration generated successfully!',
+        message: `Voice narration generated using ${selectedModel}!`,
       });
     } catch (error) {
       console.error('Audio generation failed:', error);
@@ -96,7 +98,7 @@ export function AudioApproval({
     onRegenerate(segment.id);
     
     try {
-      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice);
+      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel);
       
       const newAudio: GeneratedAudio = {
         id: `audio-${segment.id}-${Date.now()}`,
@@ -190,6 +192,15 @@ export function AudioApproval({
               ))}
             </select>
           </div>
+
+          <ModelSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            disabled={isGenerating}
+            label="AI Model"
+            showDescription={false}
+            className="mb-4"
+          />
           
           <div>
             <h4 className="font-medium text-sm text-gray-700 mb-2">Speed: {speed}x</h4>

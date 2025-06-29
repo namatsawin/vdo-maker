@@ -192,7 +192,7 @@ export const createProject = async (req: AuthenticatedRequest, res: Response): P
             order: index,
             script: segment.script,
             videoPrompt: segment.videoPrompt,
-            status: 'PENDING',
+            status: 'DRAFT',
             scriptApprovalStatus: 'DRAFT',
             imageApprovalStatus: 'DRAFT',
             videoApprovalStatus: 'DRAFT',

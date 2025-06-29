@@ -7,7 +7,7 @@ import { createError } from '@/middleware/errorHandler';
 
 export const generateScript = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, model } = req.body;
 
     if (!title) {
       throw createError('Title is required', 400);
@@ -15,7 +15,8 @@ export const generateScript = async (req: Request, res: Response, next: NextFunc
 
     const request: ScriptGenerationRequest = {
       title,
-      description
+      description,
+      model
     };
 
     const segments = await geminiService.generateScript(request);
@@ -24,7 +25,8 @@ export const generateScript = async (req: Request, res: Response, next: NextFunc
       success: true,
       data: {
         segments,
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
+        model: model || 'gemini-1.5-flash'
       }
     };
 
@@ -160,7 +162,7 @@ export const cancelVideoGeneration = async (req: Request, res: Response, next: N
 
 export const generateTTS = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { text, voice = 'default' } = req.body;
+    const { text, voice = 'default', model } = req.body;
 
     if (!text) {
       throw createError('Text is required', 400);
@@ -170,7 +172,7 @@ export const generateTTS = async (req: Request, res: Response, next: NextFunctio
       throw createError('Text too long. Maximum 5000 characters allowed', 400);
     }
 
-    const audioUrl = await geminiService.generateTextToSpeech(text, voice);
+    const audioUrl = await geminiService.generateTextToSpeech(text, voice, model);
 
     const response: ApiResponse = {
       success: true,
@@ -178,7 +180,26 @@ export const generateTTS = async (req: Request, res: Response, next: NextFunctio
         audioUrl,
         text,
         voice,
+        model: model || 'gemini-1.5-flash',
         generatedAt: new Date().toISOString()
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAvailableModels = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const models = geminiService.getAvailableModels();
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        models,
+        retrievedAt: new Date().toISOString()
       }
     };
 

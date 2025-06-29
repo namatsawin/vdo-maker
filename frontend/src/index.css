@@ -49,3 +49,21 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+/* Ensure card backgrounds work properly */
+.bg-card {
+  background-color: hsl(var(--card)) !important;
+}
+
+.text-card-foreground {
+  color: hsl(var(--card-foreground)) !important;
+}
+
+/* Fix any opacity issues */
+.bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.bg-black\/75 {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}

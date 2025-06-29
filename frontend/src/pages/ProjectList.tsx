@@ -152,7 +152,7 @@ export function ProjectList() {
               </p>
               {projects.length === 0 && (
                 <Link to="/projects/create">
-                  <Button className="flex items-center gap-2">
+                  <Button className="flex items-center mx-auto gap-2 hover:cursor-pointer">
                     <Plus className="h-4 w-4" />
                     Create Your First Project
                   </Button>
