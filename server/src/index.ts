@@ -38,7 +38,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
-app.use(rateLimiter);
+// app.use(rateLimiter);
 
 // Handle preflight requests for uploads
 app.options('/uploads/*', cors({

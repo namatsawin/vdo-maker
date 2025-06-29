@@ -18,9 +18,12 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
 
-  console.log('audio:', audio)
-
   useEffect(() => {
+    setPlaying(false)
+    setCurrentTime(0)
+    setVolume(0)
+    setMuted(false)
+
     const audioElement = audioRef.current;
     if (!audioElement) return;
 
@@ -37,7 +40,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
       audioElement.removeEventListener('loadedmetadata', updateDuration);
       audioElement.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [audio]);
 
   const handlePlayPause = () => {
     const audioElement = audioRef.current;

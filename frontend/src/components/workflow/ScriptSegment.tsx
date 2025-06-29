@@ -36,11 +36,12 @@ export function ScriptSegment({
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('kore');
 
-  const { generateSegmentAudio, selectSegmentAudio } = useProjectStore();
+  const { currentProject, generateSegmentAudio, selectSegmentAudio } = useProjectStore();
   const { addToast } = useUIStore();
 
   const currentStatus = segment.scriptApprovalStatus;
 
+  const selectedAudio = segment.audios.find(item => item.isSelected)
   const handleSave = () => {
     onUpdate(segment.id, {
       script: editedScript,
@@ -104,7 +105,6 @@ export function ScriptSegment({
   const handleAudioSelection = async (audioId: string) => {
     try {
       // Get the project ID from the current project in the store
-      const currentProject = useProjectStore.getState().currentProject;
       if (!currentProject) {
         throw new Error('No current project found');
       }
@@ -324,6 +324,7 @@ export function ScriptSegment({
                   size="sm"
                   onClick={() => onApprove(segment.id)}
                   className="bg-green-600 hover:bg-green-700"
+                  disabled={!selectedAudio}
                 >
                   <Check className="h-4 w-4 mr-1" />
                   Approve
@@ -366,11 +367,6 @@ export function ScriptSegment({
             )}
           </>
         )}
-
-        <div className="text-xs text-muted-foreground pt-2 border-t">
-          Duration: ~{segment.duration || 0}s • 
-          Created: {new Date(segment.createdAt).toLocaleDateString()}
-        </div>
       </CardContent>
     </Card>
   );

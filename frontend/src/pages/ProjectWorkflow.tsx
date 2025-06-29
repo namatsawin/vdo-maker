@@ -21,14 +21,16 @@ export function ProjectWorkflow() {
   const [searchParams, setSearchParams] = useSearchParams();
   const stage = searchParams.get('stage') || 'script';
   
-  const { projects, updateProject, generateProjectScript } = useProjectStore();
+  const { currentProject: project, updateProject, generateProjectScript, loadProject } = useProjectStore();
   const { addToast } = useUIStore();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
   const [showScriptDialog, setShowScriptDialog] = useState(false);
 
-  const project = projects.find(p => p.id === id);
+  useEffect(() => {
+    if (id) loadProject(id)
+  }, [])
 
   const handleGenerateSegments = useCallback(async (title: string, description: string, model: string) => {
     if (!project) return;
