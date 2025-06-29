@@ -15,6 +15,7 @@ interface VideoIdea {
   title: string;
   description: string;
   story: string;
+  isFactBased: boolean;
 }
 
 export function ProjectCreateForm() {

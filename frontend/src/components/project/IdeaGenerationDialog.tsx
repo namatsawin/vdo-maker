@@ -12,6 +12,7 @@ interface VideoIdea {
   title: string;
   description: string;
   story: string;
+  isFactBased: boolean;
 }
 
 interface IdeaGenerationDialogProps {
@@ -43,8 +44,9 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
         count: 5
       });
 
-      if (response.data.success) {
-        setIdeas(response.data.data.ideas);
+
+      if (response.success) {
+        setIdeas(response.data?.ideas ?? []);
       } else {
         setError(response.data.error || 'Failed to generate ideas');
       }
@@ -147,7 +149,16 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                 {ideas.map((idea, index) => (
                   <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">{idea.title}</CardTitle>
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-lg">{idea.title}</CardTitle>
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                          idea.isFactBased 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {idea.isFactBased ? 'Fact-Based' : 'Creative'}
+                        </span>
+                      </div>
                     </CardHeader>
                     <CardContent className="pt-0">
                       <p className="text-gray-600 mb-3 font-medium">{idea.description}</p>

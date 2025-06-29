@@ -19,10 +19,14 @@ const VIDEO_IDEAS_SCHEMA = {
       story: {
         type: Type.STRING,
         description: "Detailed story content and narrative for the video"
+      },
+      isFactBased: {
+        type: Type.BOOLEAN,
+        description: "Whether the story content is based on verified facts and research"
       }
     },
-    required: ["title", "description", "story"],
-    propertyOrdering: ["title", "description", "story"]
+    required: ["title", "description", "story", "isFactBased"],
+    propertyOrdering: ["title", "description", "story", "isFactBased"]
   }
 };
 
@@ -179,7 +183,7 @@ Make sure the script flows naturally from one segment to the next, and the video
     }
   }
 
-  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<Array<{ title: string; description: string; story: string }>> {
+  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<Array<{ title: string; description: string; story: string; isFactBased: boolean }>> {
     const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
     const count = request.count || 5;
     
@@ -190,6 +194,7 @@ For each idea, provide:
 1. A catchy, engaging title (will be used as project name)
 2. A brief description (1-2 sentences describing the video concept)
 3. A detailed story (comprehensive narrative content for the video, including key points, structure, and what the video will cover)
+4. Fact verification (determine if the story content is based on verifiable facts and research)
 
 Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
 
@@ -199,6 +204,18 @@ The story should be detailed enough to serve as the foundation for script genera
 - Visual elements to include
 - Target audience considerations
 - Tone and style suggestions
+
+For fact verification (isFactBased):
+- Set to true if the story is based on documented facts, scientific research, historical events, or verifiable information
+- Set to false if the story is fictional, speculative, opinion-based, or creative interpretation
+- Consider the nature of the content: documentaries, educational content, news analysis = likely fact-based
+- Creative stories, fictional narratives, artistic interpretations = likely not fact-based
+
+Examples:
+- "The History of Ancient Rome" → isFactBased: true (historical documentation)
+- "What If Dinosaurs Never Went Extinct" → isFactBased: false (speculative fiction)
+- "Climate Change Effects on Wildlife" → isFactBased: true (scientific research)
+- "A Day in the Life of a Superhero" → isFactBased: false (fictional narrative)
 
 Ensure each idea is unique, creative, and actionable for video production.
 `;
@@ -222,7 +239,7 @@ Ensure each idea is unique, creative, and actionable for video production.
       }
 
       // Parse the structured JSON response - it's already an array
-      const ideas: Array<{ title: string; description: string; story: string }> = JSON.parse(text);
+      const ideas: Array<{ title: string; description: string; story: string; isFactBased: boolean }> = JSON.parse(text);
 
       logger.info(`Successfully generated ${ideas.length} video ideas with structured output`);
       return ideas;
