@@ -37,9 +37,50 @@ export function ProjectWorkflow() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSegmentDialog, setShowSegmentDialog] = useState(false);
 
+  // Determine the current stage based on project progress
+  const getCurrentProjectStage = (): string => {
+    if (!project || !project.segments.length) {
+      return 'script';
+    }
+
+    // Check if all scripts are approved
+    const allScriptsApproved = project.segments.every(s => 
+      s.scriptApprovalStatus === ApprovalStatus.APPROVED
+    );
+
+    // Check if all images are approved
+    const allImagesApproved = project.segments.every(s => 
+      s.imageApprovalStatus === ApprovalStatus.APPROVED
+    );
+
+    // Check if all videos are approved
+    const allVideosApproved = project.segments.every(s => 
+      s.videoApprovalStatus === ApprovalStatus.APPROVED
+    );
+
+    // Determine current stage based on completion
+    if (allVideosApproved) {
+      return 'final';
+    } else if (allImagesApproved) {
+      return 'videos';
+    } else if (allScriptsApproved) {
+      return 'images';
+    } else {
+      return 'script';
+    }
+  };
+
   useEffect(() => {
     if (id) loadProject(id)
   }, [id])
+
+  // Auto-navigate to current stage when project loads
+  useEffect(() => {
+    if (project && !searchParams.get('stage')) {
+      const currentStage = getCurrentProjectStage();
+      setSearchParams({ stage: currentStage });
+    }
+  }, [project, searchParams, setSearchParams]);
 
   const handleGenerateSegments = useCallback(async (request: SegmentGenerationRequest) => {
     if (!project) return;
@@ -270,30 +311,69 @@ export function ProjectWorkflow() {
               variant={stage === 'script' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSearchParams({ stage: 'script' })}
+              className={cn(
+                'relative',
+                completedStages.includes(WorkflowStage.SCRIPT_GENERATION) && stage !== 'script' && 
+                'border-green-500 text-green-700 hover:bg-green-50'
+              )}
             >
               Script
+              {completedStages.includes(WorkflowStage.SCRIPT_GENERATION) && stage !== 'script' && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
+              )}
             </Button>
             <Button
               variant={stage === 'images' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSearchParams({ stage: 'images' })}
+              className={cn(
+                'relative',
+                completedStages.includes(WorkflowStage.IMAGE_GENERATION) && stage !== 'images' && 
+                'border-green-500 text-green-700 hover:bg-green-50'
+              )}
             >
               Images
+              {completedStages.includes(WorkflowStage.IMAGE_GENERATION) && stage !== 'images' && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
+              )}
             </Button>
             <Button
               variant={stage === 'videos' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSearchParams({ stage: 'videos' })}
+              className={cn(
+                'relative',
+                completedStages.includes(WorkflowStage.VIDEO_GENERATION) && stage !== 'videos' && 
+                'border-green-500 text-green-700 hover:bg-green-50'
+              )}
             >
               Videos
+              {completedStages.includes(WorkflowStage.VIDEO_GENERATION) && stage !== 'videos' && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
+              )}
             </Button>
             <Button
               variant={stage === 'final' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSearchParams({ stage: 'final' })}
+              className={cn(
+                'relative',
+                project?.status === ProjectStatus.COMPLETED && stage !== 'final' && 
+                'border-green-500 text-green-700 hover:bg-green-50'
+              )}
             >
               Final
+              {project?.status === ProjectStatus.COMPLETED && stage !== 'final' && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full" />
+              )}
             </Button>
+          </div>
+          
+          {/* Current Stage Indicator */}
+          <div className="text-center mt-3">
+            <span className="text-xs text-gray-500">
+              Current Stage: <span className="font-medium text-gray-700">{getCurrentProjectStage().charAt(0).toUpperCase() + getCurrentProjectStage().slice(1)}</span>
+            </span>
           </div>
         </CardContent>
       </Card>

@@ -6,7 +6,6 @@ import {
   Copy, 
   X, 
   RefreshCw,
-  Zap,
   BrushCleaning
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
