@@ -6,7 +6,7 @@ Amazon Q must behave as a senior software engineer by understanding tasks deeply
 ## Workflow Guidelines
 
 1. **Understand the Task Clearly**
-   - Try to understand the project, its capability and status.
+   - Try to understand the project, its capability and status, even if how to run the project.
    - Read and clarify the task requirements.
    - Ask for missing context or unclear specifications.
    - Summarize the understanding before proceeding with implementation.

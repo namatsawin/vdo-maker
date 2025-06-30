@@ -17,6 +17,13 @@ interface AIActions {
   generateImage: (request: ImageGenerationRequest) => Promise<any>;
   generateVideo: (request: VideoGenerationRequest) => Promise<any>;
   generateAudio: (text: string, voice?: string, model?: string) => Promise<any>;
+  analyzeAndReviseContent: (content: string) => Promise<{
+    issues: string[];
+    suggestions: string[];
+    revisedPrompt: string;
+    confidence: number;
+    explanation: string;
+  }>;
   checkVideoStatus: (taskId: string) => Promise<any>;
   testConnection: () => Promise<any>;
   getAvailableModels: () => Promise<any>;
@@ -155,6 +162,40 @@ export const useAIStore = create<AIState & AIActions>()((set) => ({
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Audio generation failed';
+      set({
+        error: errorMessage,
+        isGenerating: false,
+      });
+      throw error;
+    }
+  },
+
+  analyzeAndReviseContent: async (content: string) => {
+    set({ isGenerating: true, error: null });
+
+    try {
+      const response = await apiClient.analyzeAndReviseContent(content);
+
+      if (response.success && response.data) {
+        set({
+          isGenerating: false,
+          lastGeneration: {
+            type: 'image',
+            timestamp: new Date().toISOString(),
+            data: response.data,
+          },
+        });
+
+        return response.data;
+      } else {
+        set({
+          error: response.error?.message || 'Content analysis failed',
+          isGenerating: false,
+        });
+        throw new Error(response.error?.message || 'Content analysis failed');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Content analysis failed';
       set({
         error: errorMessage,
         isGenerating: false,

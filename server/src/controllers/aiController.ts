@@ -428,6 +428,31 @@ export const generateIdeas = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const analyzeImagePrompt = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt || typeof prompt !== 'string') {
+      throw createError('Prompt is required and must be a string', 400);
+    }
+
+    if (prompt.trim().length === 0) {
+      throw createError('Prompt cannot be empty', 400);
+    }
+
+    const analysis = await geminiService.analyzeAndReviseContent(prompt.trim());
+
+    const response: ApiResponse = {
+      success: true,
+      data: analysis
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const testAIConnection = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const [geminiStatus, imagen4Status, klingStatus] = await Promise.all([

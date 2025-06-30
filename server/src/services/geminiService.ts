@@ -538,6 +538,77 @@ Ensure each idea is unique, creative, specific, and actionable for video product
       }
     ];
   }
+
+  async analyzeAndReviseContent(content: string): Promise<{
+    issues: string[];
+    suggestions: string[];
+    revisedPrompt: string;
+    confidence: number;
+    explanation: string;
+  }> {
+    try {
+      const analysisPrompt = `Please analyze and revise the following content: "${content}"`;
+
+      const result = await this.genAI.models.generateContent({
+        model: GeminiModel.GEMINI_2_5_FLASH,
+        contents: analysisPrompt,
+        config: {
+          systemInstruction: `
+            You are a content revision assistant. Your task is to detect and revise any sensitive, offensive, or inappropriate words or phrases in the provided text. 
+            Replace only the sensitive terms with neutral or appropriate alternatives, without changing the overall meaning, tone, structure, or intent of the original content.
+            Ensure the revised version remains natural and fluent. Do not introduce new content or ideas.
+            Provide a brief list (max 3) of the main issues found, and a revised version of the original text.
+          `,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              issues: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "Brief list of main issues (max 3)"
+              },
+              revisedVersion: {
+                type: Type.STRING,
+                description: "Improved version"
+              },
+            },
+            required: ["issues", "revisedVersion"]
+          }
+        }
+      });
+
+      const text = result.text || '';
+      
+      if (!text) {
+        throw new Error('Empty response from Gemini API');
+      }
+
+      const analysis = JSON.parse(text);
+      
+      // Transform to match the expected interface
+      return {
+        issues: analysis.issues || [],
+        suggestions: analysis.issues.map((issue: string) => `Address: ${issue}`) || [],
+        revisedPrompt: analysis.revisedVersion || content,
+        confidence: analysis.issues.length === 0 ? 0.9 : 0.7,
+        explanation: analysis.issues.length > 0 
+          ? `Found ${analysis.issues.length} issue(s). Revised content addresses these concerns.`
+          : 'Content looks appropriate with minor improvements.'
+      };
+
+    } catch (error) {
+      logger.error('Error analyzing content:', error);
+      
+      return {
+        issues: ['Analysis unavailable'],
+        suggestions: ['Please review manually'],
+        revisedPrompt: content,
+        confidence: 0.5,
+        explanation: 'Service temporarily unavailable.'
+      };
+    }
+  }
 }
 
 export const geminiService = new GeminiService();

@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Check, X, ZoomIn, Download, Loader2, Sparkles, Settings, Lock, Image as ImageIcon } from 'lucide-react';
+import { Check, X, ZoomIn, Download, Loader2, Sparkles, Settings, Lock, Image as ImageIcon, BrushCleaning } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { PromptAdvisor } from './PromptAdvisor';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { VideoSegment, ApprovalStatus } from '@/types';
 import { convertToLegacyApprovalStatus, isApprovalStatus } from '@/utils/typeCompatibility';
+import { cn } from '@/lib/utils';
 
 interface ImageGenerationProps {
   segment: VideoSegment;
@@ -53,8 +55,9 @@ export function ImageApproval({
   const [showPreview, setShowPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showPromptAdvisor, setShowPromptAdvisor] = useState(false);
   
-  const { generateSegmentImage, selectSegmentImage, currentProject } = useProjectStore();
+  const { currentProject, loadProject, generateSegmentImage, selectSegmentImage } = useProjectStore();
   const { addToast } = useUIStore();
 
   const currentStatus = segment.imageApprovalStatus;
@@ -130,6 +133,10 @@ export function ImageApproval({
     try {
       await generateSegmentImage(segment.id, imagePrompt.trim(), aspectRatio, selectedModel, safetyFilterLevel, personGeneration);
       
+      if (currentProject?.id) {
+        await loadProject(currentProject.id)
+      }
+
       addToast({
         type: 'success',
         title: 'Image Generated',
@@ -248,9 +255,25 @@ export function ImageApproval({
 
         {/* Image Prompt Editor */}
         <div className="space-y-2">
-          <Label htmlFor={`image-prompt-${segment.id}`} className="text-sm font-medium text-gray-700">
-            Image Prompt:
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor={`image-prompt-${segment.id}`} className="text-sm font-medium text-gray-700">
+              Image Prompt:
+            </Label>
+            {!isApproved && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPromptAdvisor(true)}
+                className={`flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 ${
+                  imagePrompt.length < 15 ? 'animate-pulse bg-purple-50' : ''
+                }`}
+                title="Get AI suggestions to improve your prompt"
+              >
+                <BrushCleaning className="h-4 w-4" />
+                Sanitize Prompt
+              </Button>
+            )}
+          </div>
           <Textarea
             id={`image-prompt-${segment.id}`}
             value={imagePrompt}
@@ -369,46 +392,39 @@ export function ImageApproval({
         </div>
 
         {/* Generate Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             onClick={handleGenerateImage}
             disabled={isGenerating || !imagePrompt.trim() || isApproved}
-            className={`flex items-center gap-2 ${isApproved ? 'cursor-not-allowed opacity-50' : ''}`}
+            className={`flex items-center gap-3 ${isApproved ? 'cursor-not-allowed opacity-50' : ''}`}
           >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating with {selectedModel}...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                {hasImages ? 'Regenerate' : 'Generate'} with {selectedModel}
-                {isApproved && <Lock className="h-3 w-3 ml-1" />}
-              </>
-            )}
+            <Sparkles className="h-4 w-4" />
+            Generate with {selectedModel}
+            <Loader2 className={cn('h-4 w-4 animate-spin text-blue-500',  { hidden: !isGenerating })} />
           </Button>
           {isApproved && (
-            <span className="text-xs text-gray-500">
-              Cannot regenerate approved segment
-            </span>
+            <div className='flex items-center gap-1'>
+              <Lock className="h-3 w-3 ml-1" />
+              <span className="text-xs text-gray-500">
+                Cannot regenerate approved segment
+              </span>
+            </div>
           )}
         </div>
 
         {/* Loading State */}
-        {isGenerating && (
-          <div className="flex items-center justify-center py-8">
+        {/* {isGenerating && (
+          <div className="flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-3" />
               <p className="text-sm text-gray-600">Generating image with {selectedModel}...</p>
               <p className="text-xs text-gray-400 mt-1">This may take a few moments</p>
             </div>
           </div>
-        )}
+        )} */}
 
-        {/* Generated Image Display */}
         {/* Generated Images Display */}
-        {!isGenerating && hasImages && (
+        {/* {!isGenerating && hasImages && ( */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium text-gray-700">Generated Images:</Label>
@@ -478,7 +494,7 @@ export function ImageApproval({
               )}
             </div>
           </div>
-        )}
+        {/* )} */}
 
         {/* No Image State */}
         {!isGenerating && !hasImages && (
@@ -555,6 +571,14 @@ export function ImageApproval({
             </div>
           </div>
         )}
+
+        {/* Prompt Advisor Modal */}
+        <PromptAdvisor
+          currentPrompt={imagePrompt}
+          onPromptUpdate={setImagePrompt}
+          isOpen={showPromptAdvisor}
+          onClose={() => setShowPromptAdvisor(false)}
+        />
           </CardContent>
         </CollapsibleContent>
       </Collapsible>

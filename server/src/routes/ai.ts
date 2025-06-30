@@ -10,6 +10,7 @@ import {
   cancelVideoGeneration,
   generateTTS, 
   generateIdeas,
+  analyzeImagePrompt,
   testAIConnection,
   getAvailableModels,
   getAvailableVoices
@@ -34,6 +35,9 @@ router.post('/generate-ideas', generateIdeas);
 router.post('/image/generate', generateImage);
 router.get('/image/segment/:segmentId', getSegmentImages);
 router.post('/image/select/:imageId', selectImage);
+
+// Prompt analysis
+router.post('/prompt/analyze', analyzeImagePrompt);
 
 // Video generation
 router.post('/video/generate', generateVideo);

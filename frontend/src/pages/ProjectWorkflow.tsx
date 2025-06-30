@@ -17,6 +17,7 @@ import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from 
 import type { SegmentGenerationRequest } from '@/types/shared';
 import { isApprovalStatus } from '@/utils/typeCompatibility';
 import { apiClient } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 // const StageTab: Record<string, string >= {
 //   [WorkflowStage.SCRIPT_GENERATION]: 'script ',
@@ -317,7 +318,7 @@ export function ProjectWorkflow() {
             <div className="text-sm text-muted-foreground">
               Progress: {approvedCount} of {isGenerating ? '?' : totalCount} segments approved
             </div>
-            <div className="flex space-x-2">
+            <div className={cn('flex space-x-2', { 'hidden': !project.segments.length })}>
               {stage === 'script' && (
                 <>
                   <Button
@@ -410,7 +411,7 @@ export function ProjectWorkflow() {
         </div>
       }
 
-      {totalCount === 0 && stage === 'script' && (
+      {totalCount === 0 && stage === 'script' && !isGenerating &&  (
         <Card>
           <CardContent className="text-center py-12">
             <Wand2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
