@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, ArrowRight, RefreshCw, ArrowLeft, Wand2 } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { ArrowRight, RefreshCw, ArrowLeft, Wand2 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +16,13 @@ import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from 
 import type { SegmentGenerationRequest } from '@/types/shared';
 import { isApprovalStatus } from '@/utils/typeCompatibility';
 import { apiClient } from '@/lib/api';
+
+// const StageTab: Record<string, string >= {
+//   [WorkflowStage.SCRIPT_GENERATION]: 'script ',
+//   [WorkflowStage.IMAGE_GENERATION]: 'images',
+//   [WorkflowStage.VIDEO_GENERATION]: 'videos',
+//   [WorkflowStage.FINAL_ASSEMBLY]: 'final',
+// }
 
 export function ProjectWorkflow() {
   const { id } = useParams<{ id: string }>();

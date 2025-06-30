@@ -28,13 +28,23 @@ interface ProjectActions {
   
   // Real AI methods
   generateProjectScript: (title: string, description?: string, model?: string) => Promise<VideoSegment[]>;
-  generateSegmentImage: (segmentId: string, prompt: string, aspectRatio?: string) => Promise<string>;
+  generateSegmentImage: (segmentId: string, prompt: string, aspectRatio: string, model: string, safetyFilterLevel?: string, personGeneration?: string) => Promise<string>;
   generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string) => Promise<{ taskId: string; videoUrl?: string }>;
   generateSegmentAudio: (segmentId: string, text: string, voice?: string, model?: string) => Promise<string>;
   selectSegmentAudio: (projectId: string, segmentId: string, audioId: string) => Promise<void>;
+  selectSegmentImage: (projectId: string, segmentId: string, imageId: string) => Promise<void>;
+  getSegmentImages: (segmentId: string) => Promise<Array<{
+    id: string;
+    url: string;
+    prompt: string;
+    isSelected: boolean;
+    metadata: string;
+    createdAt: string;
+    updatedAt: string;
+  }>>;
 }
 
-export const useProjectStore = create<ProjectState & ProjectActions>()((set) => ({
+export const useProjectStore = create<ProjectState & ProjectActions>()((set, get) => ({
   // State
   projects: [],
   currentProject: null,
@@ -201,19 +211,77 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
     }
   },
 
-  generateSegmentImage: async (_segmentId: string, prompt: string, aspectRatio: string = 'LANDSCAPE') => {
+  generateSegmentImage: async (segmentId: string, prompt: string, aspectRatio: string, model: string, safetyFilterLevel?: string, personGeneration?: string) => {
     set({ isLoading: true, error: null });
 
     try {
       const aiStore = useAIStore.getState();
       const result = await aiStore.generateImage({ 
         prompt, 
-        aspectRatio: aspectRatio as 'SQUARE' | 'PORTRAIT' | 'LANDSCAPE'
+        aspectRatio: aspectRatio,
+        model: model,
+        segmentId: segmentId,
+        safetyFilterLevel,
+        personGeneration
       });
 
       if (result && (result.imageUrl || result.imageBase64)) {
+        const imageUrl = result.imageUrl || `data:image/png;base64,${result.imageBase64}`;
+        
+        // Update the project state with the new image
+        const { currentProject } = get();
+        if (currentProject) {
+          const updatedSegments = currentProject.segments.map((segment: VideoSegment) => {
+            if (segment.id === segmentId) {
+              // Create or update the single image for this segment
+              const newImage = {
+                id: `img-${segmentId}`,
+                url: imageUrl,
+                filename: `segment-${segmentId}-image.png`,
+                size: 0, // Will be updated when we have actual file size
+                type: 'image' as const,
+                prompt: prompt,
+                aspectRatio: aspectRatio,
+                metadata: {
+                  model: model,
+                  aspectRatio: aspectRatio
+                },
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                isSelected: true
+              };
+
+              return {
+                ...segment,
+                images: [newImage], // Always single image per segment
+                imageApprovalStatus: 'DRAFT' as const
+              };
+            }
+            return segment;
+          });
+
+          const updatedProject = {
+            ...currentProject,
+            segments: updatedSegments,
+            updatedAt: new Date().toISOString()
+          };
+
+          set({ 
+            currentProject: updatedProject,
+            isLoading: false 
+          });
+
+          // Update in storage
+          const projects = JSON.parse(localStorage.getItem('vdo-maker-projects') || '[]');
+          const projectIndex = projects.findIndex((p: any) => p.id === currentProject.id);
+          if (projectIndex !== -1) {
+            projects[projectIndex] = updatedProject;
+            localStorage.setItem('vdo-maker-projects', JSON.stringify(projects));
+          }
+        }
+
         set({ isLoading: false });
-        return result.imageUrl || `data:image/png;base64,${result.imageBase64}`;
+        return imageUrl;
       } else {
         throw new Error('Invalid image generation response');
       }
@@ -232,6 +300,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
       const result = await aiStore.generateVideo({ 
         imageUrl, 
         prompt,
+        segmentId: _segmentId,
         duration: 5,
         aspectRatio: '16:9'
       });
@@ -346,6 +415,76 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set) => 
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to select audio';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  // Select image for segment
+  selectSegmentImage: async (projectId: string, segmentId: string, imageId: string) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      await projectService.selectSegmentImage(projectId, segmentId, imageId);
+
+      // Update the local state to reflect the selection
+      set((state) => ({
+        projects: state.projects.map(p => 
+          p.id === projectId
+            ? {
+                ...p,
+                segments: p.segments.map(s => 
+                  s.id === segmentId
+                    ? {
+                        ...s,
+                        images: s.images.map(img => ({
+                          ...img,
+                          isSelected: img.id === imageId
+                        }))
+                      }
+                    : s
+                )
+              }
+            : p
+        ),
+        currentProject: state.currentProject?.id === projectId
+          ? {
+              ...state.currentProject,
+              segments: state.currentProject.segments.map(s => 
+                s.id === segmentId
+                  ? {
+                      ...s,
+                      images: s.images.map(img => ({
+                        ...img,
+                        isSelected: img.id === imageId
+                      }))
+                    }
+                  : s
+              )
+            }
+          : state.currentProject,
+        isLoading: false
+      }));
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to select image';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  // Get all images for segment
+  getSegmentImages: async (segmentId: string) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const images = await projectService.getSegmentImages(segmentId);
+      
+      set({ isLoading: false });
+      return images;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get segment images';
       set({ error: errorMessage, isLoading: false });
       throw error;
     }

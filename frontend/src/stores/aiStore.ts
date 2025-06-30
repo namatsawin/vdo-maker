@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { apiClient, type ScriptGenerationRequest, type ImageGenerationRequest, type VideoGenerationRequest } from '@/lib/api';
+import { apiClient, type ScriptGenerationRequest } from '@/lib/api';
+import type { ImageGenerationRequest, VideoGenerationRequest } from '@/types/shared';
 
 interface AIState {
   isGenerating: boolean;

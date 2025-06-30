@@ -77,6 +77,31 @@ class ProjectService {
       throw new Error(response.error?.message || 'Failed to select audio');
     }
   }
+
+  // Select image for segment
+  async selectSegmentImage(_projectId: string, _segmentId: string, imageId: string): Promise<void> {
+    const response = await apiClient.selectImage(imageId);
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to select image');
+    }
+  }
+
+  // Get all images for segment
+  async getSegmentImages(segmentId: string): Promise<Array<{
+    id: string;
+    url: string;
+    prompt: string;
+    isSelected: boolean;
+    metadata: string;
+    createdAt: string;
+    updatedAt: string;
+  }>> {
+    const response = await apiClient.getSegmentImages(segmentId);
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Failed to get segment images');
+    }
+    return response.data.images;
+  }
 }
 
 export const projectService = new ProjectService();

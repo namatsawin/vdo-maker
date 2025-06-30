@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { geminiService } from '@/services/geminiService';
-import { imagen4Service } from '@/services/imagen4Service';
+import { GeminiImageModel, imagen4Service } from '@/services/imagen4Service';
 import { klingAIService } from '@/services/klingAIService';
 import { ApiResponse, ScriptGenerationRequest } from '@/types';
 import { createError } from '@/middleware/errorHandler';
@@ -54,12 +54,100 @@ export const generateScript = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const getSegmentImages = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { segmentId } = req.params;
+
+    if (!segmentId) {
+      throw createError('Segment ID is required', 400);
+    }
+
+    // Get all images for the segment, ordered by creation date (newest first)
+    const images = await prisma.image.findMany({
+      where: { segmentId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const response: ApiResponse = {
+      success: true,
+      data: { images }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const selectImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { imageId } = req.params;
+
+    if (!imageId) {
+      throw createError('Image ID is required', 400);
+    }
+
+    // Get the image to find its segment
+    const image = await prisma.image.findUnique({
+      where: { id: imageId }
+    });
+
+    if (!image) {
+      throw createError('Image not found', 404);
+    }
+
+    // Update selection in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Unselect all images for this segment
+      await tx.image.updateMany({
+        where: { segmentId: image.segmentId },
+        data: { isSelected: false }
+      });
+
+      // Select the specified image
+      await tx.image.update({
+        where: { id: imageId },
+        data: { isSelected: true }
+      });
+    });
+
+    const response: ApiResponse = {
+      success: true,
+      data: { message: 'Image selected successfully' }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const generateImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { prompt, aspectRatio, safetyFilterLevel, personGeneration } = req.body;
+    const { 
+      prompt, 
+      segmentId,
+      aspectRatio = '1:1', 
+      safetyFilterLevel, 
+      personGeneration, 
+      model = GeminiImageModel.Imagen3
+    } = req.body;
 
     if (!prompt) {
       throw createError('Image prompt is required', 400);
+    }
+
+    if (!segmentId) {
+      throw createError('Segment ID is required', 400);
+    }
+
+    // Validate that the segment exists
+    const segment = await prisma.segment.findUnique({
+      where: { id: segmentId }
+    });
+
+    if (!segment) {
+      throw createError('Segment not found', 404);
     }
 
     // Validate the prompt
@@ -68,23 +156,83 @@ export const generateImage = async (req: Request, res: Response, next: NextFunct
       throw createError(`Invalid prompt: ${validation.reason}`, 400);
     }
 
+    // Generate the image
     const result = await imagen4Service.generateImage({
       prompt,
       aspectRatio,
+      personGeneration,
       safetyFilterLevel,
-      personGeneration
+      model
     });
 
     if (!result.success) {
       throw createError(result.error || 'Image generation failed', 500);
     }
 
-    const response: ApiResponse = {
-      success: true,
-      data: result
-    };
+    // Save the image to uploads folder and create database record
+    if (result.imageBase64) {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
 
-    res.json(response);
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `image_${segmentId}_${timestamp}.png`;
+      const filepath = path.join(uploadsDir, filename);
+      
+      // Save base64 image to file
+      const buffer = Buffer.from(result.imageBase64, 'base64');
+      fs.writeFileSync(filepath, buffer);
+      
+      // Create the full image URL (same pattern as audio URLs)
+      const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
+      const imageUrl = `${backendUrl}/uploads/${filename}`;
+      
+      // Save to database - create new image and set as selected
+      const imageRecord = await prisma.$transaction(async (tx) => {
+        // First, unselect any previously selected images for this segment
+        await tx.image.updateMany({
+          where: { segmentId },
+          data: { isSelected: false }
+        });
+
+        // Create new image and set as selected
+        return await tx.image.create({
+          data: {
+            segmentId,
+            url: imageUrl,
+            prompt,
+            isSelected: true, // New image is automatically selected
+            metadata: JSON.stringify({
+              aspectRatio,
+              model,
+              personGeneration,
+              generationTime: result.metadata?.generationTime,
+              timestamp
+            })
+          }
+        });
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        data: {
+          success: true,
+          imageUrl,
+          imageId: imageRecord.id,
+          metadata: result.metadata
+        }
+      };
+
+      res.json(response);
+    } else {
+      throw createError('No image data received from generation service', 500);
+    }
   } catch (error) {
     next(error);
   }
@@ -296,6 +444,7 @@ export const testAIConnection = async (req: Request, res: Response, next: NextFu
           imagen4: imagen4Status.configured ? 'configured' : 'fallback_mode',
           klingAI: klingStatus.configured ? 'configured' : 'fallback_mode'
         },
+        imageModels: imagen4Status.models || [],
         testedAt: new Date().toISOString()
       }
     };

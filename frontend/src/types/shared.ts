@@ -197,12 +197,18 @@ export interface ScriptSegment {
 export interface ImageGenerationRequest {
   prompt: string;
   segmentId: string;
+  aspectRatio?: string;
+  model?: string;
+  safetyFilterLevel?: string;
+  personGeneration?: string;
 }
 
 export interface VideoGenerationRequest {
   imageUrl: string;
   prompt: string;
   segmentId: string;
+  duration?: number;
+  aspectRatio?: string;
 }
 
 export interface AudioGenerationRequest {

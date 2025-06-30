@@ -1,25 +1,39 @@
-import { useState, useEffect } from 'react';
-import { Check, X, RotateCcw, ZoomIn, Download, Loader2, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Check, X, ZoomIn, Download, Loader2, Sparkles, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Textarea } from '@/components/ui/Textarea';
+import { Label } from '@/components/ui/Label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { VideoSegment, ApprovalStatus } from '@/types';
 import { convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
 
-interface ImageApprovalProps {
+interface ImageGenerationProps {
   segment: VideoSegment;
   index: number;
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
 }
 
-interface GeneratedImage {
-  id: string;
-  url: string;
-  prompt: string;
-  aspectRatio: string;
-  generatedAt: string;
+const GeminiImageModel = {
+  IMAGE_3: 'imagen-3.0-generate-002',
+  IMAGE_4: 'imagen-4.0-generate-preview-06-06',
+  IMAGE_4_ULTRA: 'imagen-4.0-ultra-generate-preview-06-06',
+}
+
+const SafetyFilterLevel = {
+  BLOCK_LOW_AND_ABOVE: "BLOCK_LOW_AND_ABOVE",
+  BLOCK_MEDIUM_AND_ABOVE: "BLOCK_MEDIUM_AND_ABOVE",
+  BLOCK_ONLY_HIGH: "BLOCK_ONLY_HIGH",
+  BLOCK_NONE: "BLOCK_NONE",
+}
+
+const PersonGeneration = {
+  DONT_ALLOW: "DONT_ALLOW",
+  ALLOW_ADULT: "ALLOW_ADULT",
+  ALLOW_ALL: "ALLOW_ALL",
 }
 
 export function ImageApproval({
@@ -27,74 +41,85 @@ export function ImageApproval({
   index,
   onApprove,
   onReject,
-}: ImageApprovalProps) {
-  const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+}: ImageGenerationProps) {
+  const [imagePrompt, setImagePrompt] = useState(segment.videoPrompt || '');
+  const [selectedModel, setSelectedModel] = useState<string>(GeminiImageModel.IMAGE_3);
+  const [safetyFilterLevel, setSafetyFilterLevel] = useState<string>(SafetyFilterLevel.BLOCK_LOW_AND_ABOVE);
+  const [personGeneration, setPersonGeneration] = useState<string>(PersonGeneration.ALLOW_ADULT);
+
+  const [aspectRatio, setAspectRatio] = useState<string>('16:9');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
-  const { generateSegmentImage } = useProjectStore();
+  const { generateSegmentImage, selectSegmentImage, currentProject } = useProjectStore();
   const { addToast } = useUIStore();
 
-  // Generate initial images when component mounts
-  useEffect(() => {
-    if (generatedImages.length === 0 && segment.videoPrompt) {
-      generateInitialImages();
-    }
-  }, [segment.videoPrompt]);
+  // Get the selected image for this segment
+  const selectedImage = segment.images?.find(img => img.isSelected) || segment.images?.[0] || null;
+  const hasImages = segment.images && segment.images.length > 0;
+  const hasMultipleImages = segment.images && segment.images.length > 1;
 
-  const generateInitialImages = async () => {
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim()) {
+      addToast({
+        type: 'error',
+        title: 'Missing Prompt',
+        message: 'Please enter an image prompt before generating.',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      // Generate 3 different variations
-      const imagePromises = [
-        generateSegmentImage(segment.id, segment.videoPrompt, 'LANDSCAPE'),
-        generateSegmentImage(segment.id, `${segment.videoPrompt} - variation 2`, 'LANDSCAPE'),
-        generateSegmentImage(segment.id, `${segment.videoPrompt} - artistic style`, 'LANDSCAPE'),
-      ];
-
-      const results = await Promise.allSettled(imagePromises);
-      const images: GeneratedImage[] = [];
-
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          images.push({
-            id: `img-${segment.id}-${index + 1}`,
-            url: result.value,
-            prompt: index === 0 ? segment.videoPrompt : `${segment.videoPrompt} - variation ${index + 1}`,
-            aspectRatio: 'LANDSCAPE',
-            generatedAt: new Date().toISOString(),
-          });
-        }
+      await generateSegmentImage(segment.id, imagePrompt.trim(), aspectRatio, selectedModel, safetyFilterLevel, personGeneration);
+      
+      addToast({
+        type: 'success',
+        title: 'Image Generated',
+        message: `Image has been successfully generated using ${selectedModel}.`,
       });
-
-      setGeneratedImages(images);
-      if (images.length > 0) {
-        setSelectedImage(images[0]);
-      }
-
-      if (images.length === 0) {
-        addToast({
-          type: 'error',
-          title: 'Image Generation Failed',
-          message: 'Unable to generate images. Please try regenerating.',
-        });
-      }
     } catch (error) {
       console.error('Image generation failed:', error);
       addToast({
         type: 'error',
-        title: 'Image Generation Error',
-        message: 'Failed to generate images. Please try again.',
+        title: 'Generation Failed',
+        message: 'Failed to generate image. Please try again.',
       });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleDownload = (image: GeneratedImage) => {
+  const handleSelectImage = async (imageId: string) => {
+    try {
+      // Get the project ID from the current project in the store
+      if (!currentProject) {
+        throw new Error('No current project found');
+      }
+
+      await selectSegmentImage(currentProject.id, segment.id, imageId);
+      
+      addToast({
+        type: 'success',
+        title: 'Image Selected',
+        message: 'Image version has been selected successfully',
+      });
+    } catch (error) {
+      console.error('Image selection failed:', error);
+      addToast({
+        type: 'error',
+        title: 'Selection Failed',
+        message: 'Failed to select image. Please try again.',
+      });
+    }
+  };
+
+  const handleDownload = () => {
+    if (!selectedImage) return;
+    
     const link = document.createElement('a');
-    link.href = image.url;
+    link.href = selectedImage.url;
     link.download = `segment-${index + 1}-image.png`;
     document.body.appendChild(link);
     link.click();
@@ -123,169 +148,275 @@ export function ImageApproval({
             <Sparkles className="h-5 w-5 text-purple-500" />
             Segment {index + 1} - Image Generation
           </CardTitle>
-          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(segment.imageApprovalStatus || 'draft')}`}>
-            {(segment.imageApprovalStatus || 'draft').toUpperCase()}
+          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(segment.imageApprovalStatus || 'DRAFT')}`}>
+            {(segment.imageApprovalStatus || 'DRAFT').toUpperCase()}
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Script and Prompt */}
-        <div className="space-y-3">
-          <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-1">Script:</h4>
-            <p className="text-sm bg-gray-50 p-3 rounded-lg">{segment.script}</p>
+        {/* Script Display */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-gray-700">Script:</Label>
+          <div className="text-sm bg-gray-50 p-3 rounded-lg border">
+            {segment.script}
           </div>
-          <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-1">Image Prompt:</h4>
-            <p className="text-sm bg-blue-50 p-3 rounded-lg text-blue-800">{segment.videoPrompt}</p>
+        </div>
+
+        {/* Image Prompt Editor */}
+        <div className="space-y-2">
+          <Label htmlFor={`image-prompt-${segment.id}`} className="text-sm font-medium text-gray-700">
+            Image Prompt:
+          </Label>
+          <Textarea
+            id={`image-prompt-${segment.id}`}
+            value={imagePrompt}
+            onChange={(e) => setImagePrompt(e.target.value)}
+            placeholder="Describe the image you want to generate..."
+            rows={3}
+            className="resize-none"
+          />
+          <p className="text-xs text-gray-500">
+            This prompt will be used to generate the first frame image for this segment.
+          </p>
+        </div>
+
+        {/* Model Selection and Settings */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-gray-700">Generation Settings:</Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              {showAdvanced ? 'Hide' : 'Show'} Advanced
+            </Button>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Model Selection */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-gray-600">AI Model:</Label>
+              <Select value={selectedModel} onValueChange={(value) => setSelectedModel(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  <SelectItem value={GeminiImageModel.IMAGE_3}>{GeminiImageModel.IMAGE_3}</SelectItem>
+                  <SelectItem value={GeminiImageModel.IMAGE_4}>{GeminiImageModel.IMAGE_4}</SelectItem>
+                  <SelectItem value={GeminiImageModel.IMAGE_4_ULTRA}>{GeminiImageModel.IMAGE_4_ULTRA}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-gray-600">Aspect Ratio:</Label>
+              <Select value={aspectRatio} onValueChange={(value) => setAspectRatio(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select ratio" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  <SelectItem value="1:1">1:1</SelectItem>
+                  <SelectItem value="4:3">4:3</SelectItem>
+                  <SelectItem value="3:4">3:4</SelectItem>
+                  <SelectItem value="16:9">16:9</SelectItem>
+                  <SelectItem value="9:16">9:16</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Advanced Settings */}
+          {showAdvanced && (
+            <div className="p-4 bg-gray-50 rounded-lg border space-y-3">
+              <h4 className="text-sm font-medium text-gray-700">Advanced Settings</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-gray-600">Safety Filter:</Label>
+                  <Select value={safetyFilterLevel} onValueChange={setSafetyFilterLevel}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className='bg-white'>
+                      <SelectItem value={SafetyFilterLevel.BLOCK_NONE}>None</SelectItem>
+                      <SelectItem value={SafetyFilterLevel.BLOCK_LOW_AND_ABOVE}>Low And Above</SelectItem>
+                      <SelectItem value={SafetyFilterLevel.BLOCK_MEDIUM_AND_ABOVE}>Medium And Above</SelectItem>
+                      <SelectItem value={SafetyFilterLevel.BLOCK_ONLY_HIGH}>Only High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-gray-600">Person Generation:</Label>
+                  <Select value={personGeneration} onValueChange={setPersonGeneration}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className='bg-white'> 
+                      <SelectItem value={PersonGeneration.ALLOW_ALL}>Allow All</SelectItem>
+                      <SelectItem value={PersonGeneration.ALLOW_ADULT}>Allow Adults</SelectItem>
+                      <SelectItem value={PersonGeneration.DONT_ALLOW}>Don't Allow</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Generate Button */}
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleGenerateImage}
+            disabled={isGenerating || !imagePrompt.trim()}
+            className="flex items-center gap-2"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating with {selectedModel}...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                {hasImages ? 'Regenerate' : 'Generate'} with {selectedModel}
+              </>
+            )}
+          </Button>
         </div>
 
         {/* Loading State */}
         {isGenerating && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-8">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-3" />
-              <p className="text-sm text-gray-600">Generating images with AI...</p>
+              <p className="text-sm text-gray-600">Generating image with {selectedModel}...</p>
               <p className="text-xs text-gray-400 mt-1">This may take a few moments</p>
             </div>
           </div>
         )}
 
-        {/* Generated Images */}
-        {!isGenerating && generatedImages.length > 0 && (
-          <>
-            {/* Image Selection */}
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm text-gray-700">Generated Images:</h4>
-              <div className="grid grid-cols-3 gap-4">
-                {generatedImages.map((image) => (
-                  <div
-                    key={image.id}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedImage?.id === image.id
-                        ? 'border-blue-500 ring-2 ring-blue-200'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSelectedImage(image)}
+        {/* Generated Image Display */}
+        {/* Generated Images Display */}
+        {!isGenerating && hasImages && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-gray-700">Generated Images:</Label>
+              {hasMultipleImages && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-gray-600">Select Version:</Label>
+                  <Select 
+                    value={selectedImage?.id || ''} 
+                    onValueChange={handleSelectImage}
                   >
-                    <img
-                      src={image.url}
-                      alt={`Generated image ${image.id}`}
-                      className="w-full h-32 object-cover"
-                    />
-                    {selectedImage?.id === image.id && (
-                      <div className="absolute top-2 right-2">
-                        <div className="bg-blue-500 text-white rounded-full p-1">
-                          <Check className="h-3 w-3" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Selected Image Preview */}
-            {selectedImage && (
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-gray-700">Selected Image:</h4>
-                <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                  <img
-                    src={selectedImage.url}
-                    alt="Selected image"
-                    className="w-full h-64 object-cover cursor-pointer"
-                    onClick={() => setShowPreview(true)}
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setShowPreview(true)}
-                      className="bg-white/90 hover:bg-white"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownload(selectedImage)}
-                      className="bg-white/90 hover:bg-white"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Choose image version" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {segment.images.sort((a, b) => {
+                        const x = new Date(a.createdAt).getTime()
+                        const y = new Date(b.createdAt).getTime()
+                        return y - x
+                      }).map((image) => (
+                        <SelectItem key={image.id} value={image.id}>
+                          {image.metadata?.model || 'Unknown Model'} - {new Date(image.createdAt).toLocaleString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p><strong>Prompt:</strong> {selectedImage.prompt}</p>
-                  <p><strong>Generated:</strong> {new Date(selectedImage.generatedAt).toLocaleString()}</p>
+              )}
+            </div>
+            
+            {selectedImage && (
+              <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                <img
+                  src={selectedImage.url}
+                  alt={`Generated image for segment ${index + 1}`}
+                  className="aspect-video w-full max-w-xl mx-auto object-contain cursor-pointer"
+                  onClick={() => setShowPreview(true)}
+                />
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowPreview(true)}
+                    className="bg-white/90 hover:bg-white"
+                    title="View full size"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownload}
+                    className="bg-white/90 hover:bg-white"
+                    title="Download image"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )}
-          </>
-        )}
-
-        {/* No Images State */}
-        {!isGenerating && generatedImages.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <Sparkles className="mx-auto h-12 w-12" />
+            
+            <div className="text-xs text-gray-500 space-y-1">
+              <p><strong>Prompt:</strong> {selectedImage?.prompt || imagePrompt}</p>
+              <p><strong>Model:</strong> {selectedImage?.metadata?.model || selectedModel}</p>
+              <p><strong>Generated:</strong> {selectedImage ? new Date(selectedImage.createdAt).toLocaleString() : 'N/A'}</p>
+              {hasMultipleImages && (
+                <p><strong>Total Versions:</strong> {segment.images.length}</p>
+              )}
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No images generated yet</h3>
-            <p className="text-gray-500 mb-4">Click "Generate Images" to create AI-generated images for this segment</p>
-            <Button onClick={generateInitialImages} className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Generate Images
-            </Button>
           </div>
         )}
 
-        {/* Action Buttons */}
-        {generatedImages.length > 0 && (
-          <div className="flex items-center justify-between pt-4 border-t">
+        {/* No Image State */}
+        {!isGenerating && !hasImages && (
+          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+            <div className="text-gray-400 mb-3">
+              <Sparkles className="mx-auto h-8 w-8" />
+            </div>
+            <h3 className="text-sm font-medium text-gray-900 mb-1">No images generated yet</h3>
+            <p className="text-xs text-gray-500">Configure settings above and click "Generate"</p>
+          </div>
+        )}
+
+        {/* Approval Actions */}
+        {hasImages && !isGenerating && (
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
             <Button
               variant="outline"
-              disabled={isGenerating}
+              onClick={() => onReject(segment.id)}
+              className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <X className="h-4 w-4" />
+              Reject
+            </Button>
+            <Button
+              onClick={() => onApprove(segment.id)}
               className="flex items-center gap-2"
             >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="h-4 w-4" />
-              )}
-              Regenerate
+              <Check className="h-4 w-4" />
+              Approve
             </Button>
-
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => onReject(segment.id)}
-                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <X className="h-4 w-4" />
-                Reject
-              </Button>
-              <Button
-                onClick={() => onApprove(segment.id)}
-                className="flex items-center gap-2"
-              >
-                <Check className="h-4 w-4" />
-                Approve
-              </Button>
-            </div>
           </div>
         )}
 
         {/* Image Preview Modal */}
-        {showPreview && selectedImage && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowPreview(false)}>
+        {showPreview && hasImages && selectedImage && (
+          <div 
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50" 
+            onClick={() => setShowPreview(false)}
+          >
             <div className="max-w-4xl max-h-full p-4">
               <img
                 src={selectedImage.url}
                 alt="Full size preview"
                 className="max-w-full max-h-full object-contain"
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           </div>

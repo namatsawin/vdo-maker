@@ -1,198 +1,164 @@
+import { GoogleGenAI, PersonGeneration, SafetyFilterLevel } from '@google/genai';
 import { logger } from '@/utils/logger';
+import * as fs from 'fs';
+import * as path from 'path';
+
+export enum GeminiImageModel {
+  Imagen3 = 'imagen-3.0-generate-002',
+  Imagen4 = 'imagen-4.0-generate-preview-06-06',
+  Image4Ultra = 'imagen-4.0-ultra-generate-preview-06-06'
+}
 
 export interface ImageGenerationRequest {
   prompt: string;
-  aspectRatio?: 'SQUARE' | 'PORTRAIT' | 'LANDSCAPE';
-  safetyFilterLevel?: 'BLOCK_NONE' | 'BLOCK_SOME' | 'BLOCK_MOST';
-  personGeneration?: 'ALLOW_ADULT' | 'ALLOW_ALL' | 'DONT_ALLOW';
+  aspectRatio?: '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
+  personGeneration?: PersonGeneration
+  safetyFilterLevel?: SafetyFilterLevel
+  numberOfImages?: number;
+  model?: GeminiImageModel
 }
 
 export interface ImageGenerationResponse {
   success: boolean;
-  imageUrl?: string;
-  imageBase64?: string;
+  images?: Array<{
+    imageBase64: string;
+    imageUrl?: string;
+  }>;
+  imageBase64?: string; // For backward compatibility
+  imageUrl?: string; // For backward compatibility
   error?: string;
   metadata?: {
     prompt: string;
-    aspectRatio: string;
+    aspectRatio?: string;
+    model: string;
+    numberOfImages: number;
     generationTime: number;
   };
 }
 
 class Imagen4Service {
+  private ai: GoogleGenAI;
   private apiKey: string;
-  private projectId: string;
-  private baseUrl: string;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || '';
-    this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || '';
-    this.baseUrl = 'https://aiplatform.googleapis.com/v1';
     
-    if (!this.apiKey || !this.projectId) {
-      logger.warn('⚠️ Imagen4 API credentials not configured. Using fallback mode.');
+    if (!this.apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required for image generation');
     }
+
+    this.ai = new GoogleGenAI({
+      apiKey: this.apiKey
+    });
   }
 
   async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     const startTime = Date.now();
+    const model = request.model ?? GeminiImageModel.Imagen3
     
     try {
-      logger.info(`🎨 Generating image with Imagen4: "${request.prompt.substring(0, 50)}..."`);
 
-      // Check if API credentials are available
-      if (!this.apiKey || !this.projectId) {
-        return this.generateFallbackImage(request, startTime);
-      }
+      console.log('request:', request)
+      const response = await this.ai.models.generateImages({
+        model: model,
+        prompt: request.prompt,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: request.aspectRatio,
+          personGeneration: request.personGeneration,
+          safetyFilterLevel: request.safetyFilterLevel
+        },
+      });
 
-      // Prepare the request payload
-      const payload = {
-        instances: [{
-          prompt: request.prompt,
-          image: {
-            aspectRatio: request.aspectRatio || 'SQUARE',
-            safetyFilterLevel: request.safetyFilterLevel || 'BLOCK_SOME',
-            personGeneration: request.personGeneration || 'ALLOW_ADULT'
-          }
-        }],
-        parameters: {
-          sampleCount: 1
-        }
-      };
-
-      const response = await fetch(
-        `${this.baseUrl}/projects/${this.projectId}/locations/us-central1/publishers/google/models/imagen-3.0-generate-001:predict`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${await this.getAccessToken()}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error(`❌ Imagen4 API error: ${response.status} - ${errorText}`);
-        return this.generateFallbackImage(request, startTime);
-      }
-
-      const data = await response.json() as any;
       const generationTime = Date.now() - startTime;
 
-      if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
-        logger.info(`✅ Image generated successfully in ${generationTime}ms`);
+      if (response.generatedImages && response.generatedImages.length > 0) {
+        const images = response.generatedImages
+          .filter(generatedImage => generatedImage.image?.imageBytes)
+          .map((generatedImage) => ({
+            imageBase64: generatedImage.image!.imageBytes as string
+          }));
+
+        logger.info(`✅ ${images.length} image(s) generated successfully with ${model} in ${generationTime}ms`);
         
         return {
           success: true,
-          imageBase64: data.predictions[0].bytesBase64Encoded,
+          images,
+          // For backward compatibility, return first image
+          imageBase64: images[0]?.imageBase64,
           metadata: {
             prompt: request.prompt,
-            aspectRatio: request.aspectRatio || 'SQUARE',
+            aspectRatio: request.aspectRatio,
+            model: model,
+            numberOfImages: images.length,
             generationTime
           }
         };
       } else {
-        logger.error('❌ Unexpected Imagen4 response format');
-        return this.generateFallbackImage(request, startTime);
+        throw new Error('No images generated in response');
       }
 
     } catch (error) {
-      const generationTime = Date.now() - startTime;
-      logger.error('❌ Imagen4 service error:', error);
-      return this.generateFallbackImage(request, startTime);
+      logger.error(`❌ ${model} image generation error:`, error);
+      throw error
     }
   }
 
-  private async getAccessToken(): Promise<string> {
-    // In a real implementation, you would use Google Auth libraries
-    // For now, we'll use the API key directly (this is a simplified approach)
-    // In production, use proper OAuth2 or service account authentication
-    return this.apiKey;
-  }
-
-  private generateFallbackImage(request: ImageGenerationRequest, startTime: number): ImageGenerationResponse {
-    const generationTime = Date.now() - startTime;
+  async generateImagesAndSave(request: ImageGenerationRequest, outputDir?: string): Promise<ImageGenerationResponse & { filePaths?: string[] }> {
+    const result = await this.generateImage(request);
     
-    logger.info(`🔄 Using fallback image generation for: "${request.prompt.substring(0, 50)}..."`);
-    
-    // Generate a placeholder image URL based on the prompt
-    const aspectRatio = request.aspectRatio || 'SQUARE';
-    let dimensions = '512x512';
-    
-    switch (aspectRatio) {
-      case 'PORTRAIT':
-        dimensions = '512x768';
-        break;
-      case 'LANDSCAPE':
-        dimensions = '768x512';
-        break;
-      default:
-        dimensions = '512x512';
-    }
-
-    // Create a deterministic placeholder based on prompt hash
-    const promptHash = this.hashString(request.prompt);
-    const backgroundColor = this.generateColorFromHash(promptHash);
-    const textColor = this.getContrastColor(backgroundColor);
-    
-    // Use a placeholder service that generates images with text
-    const placeholderText = encodeURIComponent(request.prompt.substring(0, 30));
-    const imageUrl = `https://via.placeholder.com/${dimensions}/${backgroundColor}/${textColor}?text=${placeholderText}`;
-
-    return {
-      success: true,
-      imageUrl,
-      metadata: {
-        prompt: request.prompt,
-        aspectRatio: aspectRatio,
-        generationTime
+    if (result.success && result.images) {
+      try {
+        const baseDir = outputDir || './generated-images';
+        
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(baseDir)) {
+          fs.mkdirSync(baseDir, { recursive: true });
+        }
+        
+        const filePaths: string[] = [];
+        
+        // Save each generated image
+        result.images.forEach((image, index) => {
+          const fileName = `imagen-${Date.now()}-${index + 1}.png`;
+          const filePath = path.join(baseDir, fileName);
+          
+          // Convert base64 to buffer and save
+          const buffer = Buffer.from(image.imageBase64, 'base64');
+          fs.writeFileSync(filePath, buffer);
+          
+          filePaths.push(filePath);
+          logger.info(`💾 Image ${index + 1} saved as ${filePath}`);
+        });
+        
+        return {
+          ...result,
+          filePaths,
+          imageUrl: filePaths[0] // For backward compatibility
+        };
+      } catch (saveError) {
+        logger.error('Failed to save images:', saveError);
+        return {
+          ...result,
+          error: `Images generated but failed to save: ${saveError instanceof Error ? saveError.message : 'Unknown error'}`
+        };
       }
-    };
-  }
-
-  private hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
     }
-    return Math.abs(hash);
-  }
-
-  private generateColorFromHash(hash: number): string {
-    // Generate a pleasant color from hash
-    const colors = [
-      '4A90E2', '7ED321', 'F5A623', 'D0021B', '9013FE',
-      '50E3C2', 'B8E986', 'F8E71C', 'BD10E0', '4A4A4A'
-    ];
-    return colors[hash % colors.length];
-  }
-
-  private getContrastColor(backgroundColor: string): string {
-    // Simple contrast calculation - return white or black text
-    const hex = backgroundColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 128 ? '000000' : 'FFFFFF';
+    
+    return result;
   }
 
   async validateImagePrompt(prompt: string): Promise<{ valid: boolean; reason?: string }> {
-    // Basic prompt validation
     if (!prompt || prompt.trim().length === 0) {
       return { valid: false, reason: 'Prompt cannot be empty' };
     }
 
-    if (prompt.length > 1000) {
-      return { valid: false, reason: 'Prompt too long (max 1000 characters)' };
+    if (prompt.length > 2000) {
+      return { valid: false, reason: 'Prompt too long (max 2000 characters)' };
     }
 
-    // Check for potentially harmful content (basic filtering)
-    const bannedWords = ['violence', 'explicit', 'harmful', 'illegal'];
+    // Basic content filtering
+    const bannedWords = ['violence', 'explicit', 'harmful', 'illegal', 'nsfw'];
     const lowerPrompt = prompt.toLowerCase();
     
     for (const word of bannedWords) {
@@ -204,11 +170,62 @@ class Imagen4Service {
     return { valid: true };
   }
 
-  async getGenerationStatus(): Promise<{ available: boolean; configured: boolean }> {
+  async getGenerationStatus(): Promise<{ 
+    available: boolean; 
+    configured: boolean; 
+    models: Array<{
+      id: string;
+      name: string;
+      description: string;
+      maxImages: number;
+    }>;
+  }> {
     return {
-      available: true, // Service is always available (fallback mode)
-      configured: !!(this.apiKey && this.projectId)
+      available: !!this.apiKey,
+      configured: !!this.apiKey,
+      models: [
+        {
+          id: 'imagen-3.0-generate-002',
+          name: 'Imagen 3.0',
+          description: 'Google\'s specialized image generation model',
+          maxImages: 4
+        },
+        {
+          id: 'imagen-4.0-generate-preview-06-06',
+          name: 'Imagen 4.0 Preview',
+          description: 'Latest Imagen model with enhanced quality (recommended)',
+          maxImages: 4
+        },
+        {
+          id: 'imagen-4.0-ultra-generate-preview-06-06',
+          name: 'Imagen 4.0 Ultra Preview',
+          description: 'Ultra-high quality Imagen model (1 image only)',
+          maxImages: 1
+        }
+      ]
     };
+  }
+
+  // Test method to verify the service is working
+  async testImageGeneration(): Promise<void> {
+    try {
+      const testPrompt = "A simple red circle on a white background";
+      logger.info('🧪 Testing image generation with Imagen...');
+      
+      const result = await this.generateImagesAndSave({
+        prompt: testPrompt,
+        numberOfImages: 2
+      }, './test-images');
+      
+      if (result.success) {
+        logger.info('✅ Image generation test successful!');
+        logger.info(`📁 Test images saved to: ${result.filePaths?.join(', ')}`);
+      } else {
+        logger.error('❌ Image generation test failed:', result.error);
+      }
+    } catch (error) {
+      logger.error('❌ Image generation test error:', error);
+    }
   }
 }
 

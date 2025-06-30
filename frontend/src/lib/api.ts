@@ -1,4 +1,8 @@
 // API Client for VDO Maker Backend
+import type { 
+  ImageGenerationRequest,
+  VideoGenerationRequest
+} from '@/types/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
@@ -31,22 +35,6 @@ export interface ScriptSegment {
   order: number;
   script: string;
   videoPrompt: string;
-}
-
-export interface ImageGenerationRequest {
-  prompt: string;
-  aspectRatio?: 'SQUARE' | 'PORTRAIT' | 'LANDSCAPE';
-  safetyFilterLevel?: 'BLOCK_NONE' | 'BLOCK_SOME' | 'BLOCK_MOST';
-  personGeneration?: 'ALLOW_ADULT' | 'ALLOW_ALL' | 'DONT_ALLOW';
-}
-
-export interface VideoGenerationRequest {
-  imageUrl?: string;
-  imageBase64?: string;
-  prompt: string;
-  duration?: number;
-  aspectRatio?: '16:9' | '9:16' | '1:1';
-  mode?: 'std' | 'pro';
 }
 
 class ApiClient {
@@ -171,9 +159,12 @@ class ApiClient {
     success: boolean;
     imageUrl?: string;
     imageBase64?: string;
+    imageId?: string;
     metadata?: {
       prompt: string;
-      aspectRatio: string;
+      aspectRatio?: string;
+      model: string;
+      numberOfImages: number;
       generationTime: number;
     };
   }>> {
@@ -226,6 +217,29 @@ class ApiClient {
     return this.request('/ai/tts/generate', {
       method: 'POST',
       body: JSON.stringify({ text, voice, model }),
+    });
+  }
+
+  // Image selection methods
+  async getSegmentImages(segmentId: string): Promise<ApiResponse<{
+    images: Array<{
+      id: string;
+      url: string;
+      prompt: string;
+      isSelected: boolean;
+      metadata: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+  }>> {
+    return this.request(`/ai/image/segment/${segmentId}`);
+  }
+
+  async selectImage(imageId: string): Promise<ApiResponse<{
+    message: string;
+  }>> {
+    return this.request(`/ai/image/select/${imageId}`, {
+      method: 'POST'
     });
   }
 

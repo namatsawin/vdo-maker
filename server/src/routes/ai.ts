@@ -3,6 +3,8 @@ import { authenticateToken } from '@/middleware/auth';
 import { 
   generateScript, 
   generateImage,
+  selectImage,
+  getSegmentImages,
   generateVideo,
   getVideoStatus,
   cancelVideoGeneration,
@@ -30,6 +32,8 @@ router.post('/generate-ideas', generateIdeas);
 
 // Image generation
 router.post('/image/generate', generateImage);
+router.get('/image/segment/:segmentId', getSegmentImages);
+router.post('/image/select/:imageId', selectImage);
 
 // Video generation
 router.post('/video/generate', generateVideo);
