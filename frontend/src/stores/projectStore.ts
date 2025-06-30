@@ -29,6 +29,7 @@ interface ProjectActions {
   // Real AI methods
   generateProjectScript: (title: string, description?: string, model?: string) => Promise<VideoSegment[]>;
   generateSegmentImage: (segmentId: string, prompt: string, aspectRatio: string, model: string, safetyFilterLevel?: string, personGeneration?: string) => Promise<string>;
+  generateAllSegmentImages: (aspectRatio: string, model: string, safetyFilterLevel?: string, personGeneration?: string) => Promise<{ success: number; skipped: number; failed: number; }>;
   generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string) => Promise<{ taskId: string; videoUrl?: string }>;
   generateSegmentAudio: (segmentId: string, text: string, voice?: string, model?: string) => Promise<string>;
   selectSegmentAudio: (projectId: string, segmentId: string, audioId: string) => Promise<void>;
@@ -290,6 +291,62 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       set({ error: errorMessage, isLoading: false });
       throw error;
     }
+  },
+
+  generateAllSegmentImages: async (aspectRatio, model, safetyFilterLevel, personGeneration) => {
+    const { currentProject } = get();
+    if (!currentProject) {
+      throw new Error('No current project found');
+    }
+
+    set({ isLoading: true, error: null });
+
+    // Filter segments that need image generation (no existing images and have video prompts)
+    const segmentsToGenerate = currentProject.segments.filter(segment => 
+      segment.videoPrompt && 
+      segment.videoPrompt.trim() !== '' &&
+      (!segment.images || segment.images.length === 0)
+    );
+
+    if (segmentsToGenerate.length === 0) {
+      set({ isLoading: false });
+      return { success: 0, skipped: currentProject.segments.length, failed: 0 };
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    const results = [];
+
+    // Process segments sequentially to avoid overwhelming the API
+    for (const segment of segmentsToGenerate) {
+      try {
+        await get().generateSegmentImage(
+          segment.id, 
+          segment.videoPrompt!, 
+          aspectRatio, 
+          model, 
+          safetyFilterLevel, 
+          personGeneration
+        );
+        successCount++;
+        results.push({ segmentId: segment.id, success: true });
+      } catch (error: any) {
+        failedCount++;
+        results.push({ segmentId: segment.id, success: false, error });
+        console.error(`Failed to generate image for segment (${segment.id}):`, error);
+      }
+    }
+
+    const skippedCount = currentProject.segments.length - segmentsToGenerate.length;
+    
+    set({ isLoading: false });
+    
+    return {
+      success: successCount,
+      skipped: skippedCount,
+      failed: failedCount,
+      results
+    };
   },
 
   generateSegmentVideo: async (_segmentId: string, imageUrl: string, prompt: string) => {

@@ -11,6 +11,7 @@ import { ImageApproval } from '@/components/workflow/ImageApproval';
 import { VideoApproval } from '@/components/workflow/VideoApproval';
 import { FinalAssembly } from '@/components/workflow/FinalAssembly';
 import { WorkflowProgress } from '@/components/workflow/WorkflowProgress';
+import { GenerateAllImagesButton } from '@/components/workflow/GenerateAllImagesButton';
 import { SegmentGenerationDialog } from '@/components/workflow/SegmentGenerationDialog';
 import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from '@/types';
 import type { SegmentGenerationRequest } from '@/types/shared';
@@ -367,7 +368,13 @@ export function ProjectWorkflow() {
               }}
             />
           ) : (
-            project.segments.map((segment, index) => (
+            <>
+              {/* Generate All Images Button - only show for images stage */}
+              {stage === 'images' && (
+                <GenerateAllImagesButton segments={project.segments} />
+              )}
+              
+              {project.segments.map((segment, index) => (
               <div key={segment.id} className="relative">
                 {stage === 'script' && (
                   <ScriptSegment
@@ -397,7 +404,8 @@ export function ProjectWorkflow() {
                   />
                 )}
               </div>
-            ))
+              ))}
+            </>
           )}
         </div>
       }

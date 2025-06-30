@@ -30,7 +30,7 @@ Amazon Q must behave as a senior software engineer by understanding tasks deeply
    - If code fails to run or test, debug and fix issues incrementally.
    - Show how issues are diagnosed (e.g., via logs, error messages).
 
-6. **Run and Validate the Project**
+6. **Validate the Project**
    - Build the application to ensure it is free error.
    - Simulate manual QA testing where appropriate.
 
