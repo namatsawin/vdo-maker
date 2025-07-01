@@ -5,4 +5,6 @@ export { AudioApproval } from './AudioApproval';
 export { FinalAssembly } from './FinalAssembly';
 export { WorkflowProgress } from './WorkflowProgress';
 export { GenerateAllImagesButton } from './GenerateAllImagesButton';
+export { GenerateAllAudiosButton } from './GenerateAllAudiosButton';
+export { GenerateAllVideosButton } from './GenerateAllVideosButton';
 export { PromptAdvisor } from './PromptAdvisor';

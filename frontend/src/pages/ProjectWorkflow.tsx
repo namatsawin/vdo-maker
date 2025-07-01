@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, RefreshCw, ArrowLeft, Wand2 } from 'lucide-react';
+import { RefreshCw, ArrowLeft, Wand2 } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,8 @@ import { VideoApproval } from '@/components/workflow/VideoApproval';
 import { FinalAssembly } from '@/components/workflow/FinalAssembly';
 import { WorkflowProgress } from '@/components/workflow/WorkflowProgress';
 import { GenerateAllImagesButton } from '@/components/workflow/GenerateAllImagesButton';
+import { GenerateAllAudiosButton } from '@/components/workflow/GenerateAllAudiosButton';
+import { GenerateAllVideosButton } from '@/components/workflow/GenerateAllVideosButton';
 import { SegmentGenerationDialog } from '@/components/workflow/SegmentGenerationDialog';
 import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from '@/types';
 import type { SegmentGenerationRequest } from '@/types/shared';
@@ -130,16 +132,22 @@ export function ProjectWorkflow() {
 
   const getApprovalField = (currentStage: string) => {
     switch (currentStage) {
-      case 'script': return 'scriptApprovalStatus';
-      case 'images': return 'imageApprovalStatus';
-      case 'videos': return 'videoApprovalStatus';
-      default: return 'scriptApprovalStatus';
+      case 'script': return ['scriptApprovalStatus', 'audioApprovalStatus'];
+      case 'images': return ['imageApprovalStatus'];
+      case 'videos': return ['videoApprovalStatus'];
+      default: return ['scriptApprovalStatus'];
     }
   };
 
   const handleApprove = (segmentId: string) => {
-    const field = getApprovalField(stage);
-    handleSegmentUpdate(segmentId, { [field]: 'APPROVED' as ApprovalStatus });
+    const fields = getApprovalField(stage);
+
+    const payload = fields.reduce((acc: Record<string, ApprovalStatus>, item) => {
+       acc[item] = ApprovalStatus.APPROVED
+       return acc
+    }, {})
+
+    handleSegmentUpdate(segmentId, payload);
     
     addToast({
       type: 'success',
@@ -149,8 +157,14 @@ export function ProjectWorkflow() {
   };
 
   const handleReject = (segmentId: string) => {
-    const field = getApprovalField(stage);
-    handleSegmentUpdate(segmentId, { [field]: 'REJECTED' as ApprovalStatus });
+    const fields = getApprovalField(stage);
+
+    const payload = fields.reduce((acc: Record<string, ApprovalStatus>, item) => {
+       acc[item] = ApprovalStatus.REJECTED
+       return acc
+    }, {})
+
+    handleSegmentUpdate(segmentId, payload);
     
     addToast({
       type: 'warning',
@@ -454,6 +468,16 @@ export function ProjectWorkflow() {
               {stage === 'images' && (
                 <GenerateAllImagesButton segments={project.segments} />
               )}
+
+              {/* Generate All Videos Button - only show for videos stage */}
+              {stage === 'videos' && (
+                <GenerateAllVideosButton segments={project.segments} />
+              )}
+
+              {/* Generate All Audios Button - only show for audios stage */}
+              {stage === 'script' && (
+                <GenerateAllAudiosButton segments={project.segments} />
+              )}
               
               {project.segments.map((segment, index) => (
               <div key={segment.id} className="relative">
@@ -525,13 +549,9 @@ export function ProjectWorkflow() {
               <Button
                 onClick={handleProceedToNext}
                 disabled={!canProceedToNext()}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-green-500 hover:bg-green-600 min-w-[120px]"
               >
-                {stage === 'script' ? 'Proceed to Images' : 
-                 stage === 'images' ? 'Proceed to Videos' : 
-                 stage === 'videos' ? 'Proceed to Final Assembly' :
-                 'Proceed to Next Stage'}
-                <ArrowRight className="h-4 w-4 ml-2" />
+                 Next
               </Button>
             </div>
           </CardContent>

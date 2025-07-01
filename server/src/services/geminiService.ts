@@ -59,6 +59,11 @@ const SCRIPT_SEGMENTS_SCHEMA = {
   propertyOrdering: ["segments"]
 };
 
+export enum GeminiTTSModel {
+  FLASH = 'gemini-2.5-flash-preview-tts',
+  PRO = 'gemini-2.5-pro-preview-tts'
+}
+
 class GeminiService {
   private genAI: GoogleGenAI;
 
@@ -172,28 +177,18 @@ class GeminiService {
     }
   }
 
-  async generateTextToSpeech(text: string, voice: string = 'Kore', model?: GeminiModel): Promise<string> {
+  async generateTextToSpeech(text: string, voice: string = 'Kore', model = GeminiTTSModel.FLASH): Promise<string> {
     try {
-      // Use Gemini 2.5 TTS models
-      const ttsModel = 'gemini-2.5-flash-preview-tts';
-      logger.info(`Gemini TTS generation requested - Voice: ${voice}, Model: ${ttsModel}, Text length: ${text.length}`);
-      
-      // Validate text length (Gemini TTS has limits)
       if (text.length > 5000) {
         throw new Error('Text too long. Maximum 5000 characters allowed for TTS');
       }
 
-      // Get voice configuration
       const voiceName = this.getGeminiVoiceName(voice);
       
-      // Create TTS prompt with style guidance
       const prompt = `Read aloud in a warm, friendly, and clear tone: ${text}`;
 
-      logger.info(`Calling Gemini TTS with voice: ${voiceName}`);
-
-      // Generate audio using Gemini's native TTS
       const response = await this.genAI.models.generateContent({
-        model: ttsModel,
+        model: model,
         contents: [{ parts: [{ text: prompt }] }],
         config: {
           responseModalities: ['AUDIO'],
@@ -205,7 +200,6 @@ class GeminiService {
         },
       });
 
-      // Extract audio data from response
       const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       
       if (!audioData) {

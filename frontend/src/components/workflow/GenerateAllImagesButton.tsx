@@ -39,7 +39,7 @@ export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonPro
   const [personGeneration, setPersonGeneration] = useState<string>(PersonGeneration.ALLOW_ADULT);
   const [showSettings, setShowSettings] = useState(false);
   
-  const { generateAllSegmentImages } = useProjectStore();
+  const { generateSegmentImage } = useProjectStore();
   const { addToast } = useUIStore();
 
   // Calculate segments that need generation
@@ -72,38 +72,22 @@ export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonPro
     setIsGenerating(true);
     
     try {
-      const result = await generateAllSegmentImages(
-        aspectRatio,
-        selectedModel,
-        safetyFilterLevel,
-        personGeneration
-      );
+      await Promise.all(segmentsNeedingGeneration.map(segment => {
+        return generateSegmentImage(
+          segment.id, 
+          segment.videoApprovalStatus,
+          aspectRatio,
+          selectedModel,
+          safetyFilterLevel,
+          personGeneration
+        )
+      }))
 
-      // Show detailed results
-      if (result.success > 0) {
-        addToast({
-          type: 'success',
-          title: 'Batch Generation Complete',
-          message: `Successfully generated ${result.success} images. ${result.skipped > 0 ? `Skipped ${result.skipped} segments with existing images.` : ''} ${result.failed > 0 ? `${result.failed} failed.` : ''}`,
-        });
-      }
-
-      if (result.failed > 0) {
-        addToast({
-          type: 'error',
-          title: 'Some Generations Failed',
-          message: `${result.failed} segments failed to generate. Check individual segments for details.`,
-        });
-      }
-
-      if (result.success === 0 && result.failed === 0) {
-        addToast({
-          type: 'info',
-          title: 'No Images Generated',
-          message: `All ${result.skipped} segments already have images or are missing prompts.`,
-        });
-      }
-
+      addToast({
+        type: 'success',
+        title: 'Batch Generation Complete',
+        message: `Successfully batch generated images`,
+      });
     } catch (error) {
       console.error('Batch image generation failed:', error);
       addToast({

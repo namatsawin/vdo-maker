@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { geminiService } from '@/services/geminiService';
+import { geminiService, GeminiTTSModel } from '@/services/geminiService';
 import { GeminiImageModel, imagen4Service } from '@/services/imagen4Service';
 import { klingAIService } from '@/services/klingAIService';
 import { ApiResponse, ScriptGenerationRequest } from '@/types';
@@ -425,7 +425,7 @@ export const cancelVideoGeneration = async (req: Request, res: Response, next: N
 
 export const generateTTS = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { text, voice = 'default', model } = req.body;
+    const { text, voice = 'default', model = GeminiTTSModel.FLASH } = req.body;
 
     if (!text) {
       throw createError('Text is required', 400);
@@ -443,7 +443,7 @@ export const generateTTS = async (req: Request, res: Response, next: NextFunctio
         audioUrl,
         text,
         voice,
-        model: model || 'gemini-1.5-flash',
+        model: model,
         generatedAt: new Date().toISOString()
       }
     };
