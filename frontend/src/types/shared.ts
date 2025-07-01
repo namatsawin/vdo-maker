@@ -80,6 +80,7 @@ export interface MediaAsset {
   width?: number; // For images/video
   height?: number; // For images/video
   prompt?: string;
+  filename?: string; // For display purposes
   metadata?: Record<string, any>;
   duration?: number; // for video/audio in seconds
   isSelected?: boolean; // For video/audio selection (multiple files per segment)

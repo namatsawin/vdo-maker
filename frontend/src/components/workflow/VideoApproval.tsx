@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Check, X, RotateCcw, Download, Loader2, Video, BrushCleaning, Wand2, Clock, Eye, Image as ImageIcon, Play, Pause, CheckCircle } from 'lucide-react';
+import { Check, X, RotateCcw, Download, Loader2, Video, BrushCleaning, Wand2, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Textarea } from '@/components/ui/Textarea';
@@ -434,7 +434,6 @@ export function VideoApproval({
                     src={selectedVideo.url}
                     className="w-full mx-auto max-w-3xl aspect-video object-contain rounded-md bg-gray-100"
                     controls
-                    autoPlay
                     poster={selectedImage?.url} // Use first frame as poster
                   />
                 </div>

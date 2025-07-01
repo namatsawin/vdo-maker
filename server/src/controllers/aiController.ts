@@ -354,7 +354,7 @@ export const generateVideo = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const getVideoStatus = async (req: Request, res: Response, next: NextFunction) => {
+export const getVideoStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { taskId } = req.params;
 
@@ -377,7 +377,8 @@ export const getVideoStatus = async (req: Request, res: Response, next: NextFunc
         }
       };
 
-      return res.json(response);
+      res.json(response);
+      return;
     }
 
     const result = await klingAIService.getVideoStatus(taskId)
@@ -395,7 +396,7 @@ export const getVideoStatus = async (req: Request, res: Response, next: NextFunc
       }
     };
 
-    return res.json(response);
+    res.json(response);
   } catch (error) {
     next(error);
   }
