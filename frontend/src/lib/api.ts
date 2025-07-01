@@ -256,6 +256,14 @@ class ApiClient {
     });
   }
 
+  async selectVideo(videoId: string): Promise<ApiResponse<{
+    message: string;
+  }>> {
+    return this.request(`/ai/video/select/${videoId}`, {
+      method: 'POST'
+    });
+  }
+
   async getAvailableModels(): Promise<ApiResponse<{
     models: Array<{
       value: string;

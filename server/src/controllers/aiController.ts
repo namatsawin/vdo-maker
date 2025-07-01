@@ -122,6 +122,49 @@ export const selectImage = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+export const selectVideo = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { videoId } = req.params;
+
+    if (!videoId) {
+      throw createError('Video ID is required', 400);
+    }
+
+    // Get the video to find its segment
+    const video = await prisma.video.findUnique({
+      where: { id: videoId }
+    });
+
+    if (!video) {
+      throw createError('Video not found', 404);
+    }
+
+    // Update selection in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Unselect all videos for this segment
+      await tx.video.updateMany({
+        where: { segmentId: video.segmentId },
+        data: { isSelected: false }
+      });
+
+      // Select the specified video
+      await tx.video.update({
+        where: { id: videoId },
+        data: { isSelected: true }
+      });
+    });
+
+    const response: ApiResponse = {
+      success: true,
+      data: { message: 'Video selected successfully' }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const generateImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { 
@@ -240,42 +283,69 @@ export const generateImage = async (req: Request, res: Response, next: NextFunct
 
 export const generateVideo = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { imageUrl, imageBase64, prompt, duration, aspectRatio, mode } = req.body;
+    const { 
+      segmentId,
+      imageUrl, 
+      prompt, 
+      negativePrompt, 
+      duration = 5, 
+      mode = 'std' 
+    } = req.body;
 
-    if (!prompt) {
-      throw createError('Video prompt is required', 400);
+    if (!segmentId) {
+      throw createError('SegmentId is required', 400);
     }
 
-    // Validate the request
-    const validation = await klingAIService.validateVideoRequest({
-      imageUrl,
-      imageBase64,
-      prompt,
-      duration,
-      aspectRatio,
-      mode
-    });
+    if (!prompt) {
+      throw createError('Prompt is required', 400);
+    }
 
-    if (!validation.valid) {
-      throw createError(`Invalid request: ${validation.reason}`, 400);
+    if (!imageUrl) {
+      throw createError('Image is required', 400);
     }
 
     const result = await klingAIService.generateVideo({
       imageUrl,
-      imageBase64,
       prompt,
       duration,
-      aspectRatio,
-      mode
-    });
+      mode,
+      negativePrompt
+    })
 
-    if (!result.success) {
-      throw createError(result.error || 'Video generation failed', 500);
-    }
+    const record = await prisma.$transaction(async (tx) => {
+      // First, unselect any previously selected videos for this segment
+      await tx.video.updateMany({
+        where: { segmentId },
+        data: { isSelected: false }
+      });
+
+      // Create new video and set as selected
+      return await tx.video.create({
+        data: {
+          prompt,
+          duration,
+          segmentId,
+          taskId: result.taskId,
+          status: result.status,
+          isSelected: true, // New video is automatically selected
+          metadata: JSON.stringify({ 
+            mode: result.input?.mode, 
+            negative_prompt: result.input?.negative_prompt,
+            status: result.status, // Include status in metadata for frontend filtering
+            taskId: result.taskId
+          })
+        }
+      });
+    });
 
     const response: ApiResponse = {
       success: true,
-      data: result
+      data: {
+        taskId: result.taskId,
+        status: result.status,
+        record: record,
+        message: 'Video generation task created successfully'
+      }
     };
 
     res.json(response);
@@ -292,14 +362,40 @@ export const getVideoStatus = async (req: Request, res: Response, next: NextFunc
       throw createError('Task ID is required', 400);
     }
 
-    const result = await klingAIService.getVideoStatus(taskId);
+    const record = await prisma.video.findFirst({ where: { taskId } })
 
+    if (!record) {
+      throw createError(`Video with the task is not found`, 400);
+    }
+
+    if (record.status === 'completed') {
+      const response: ApiResponse = {
+        success: true,
+        data: {
+          taskId: taskId,
+          status: record.status,
+        }
+      };
+
+      return res.json(response);
+    }
+
+    const result = await klingAIService.getVideoStatus(taskId)
+
+    await prisma.video.update({
+      where: { id: record.id },
+      data: { status: result.status, url: result.videoUrl }
+    })
+    
     const response: ApiResponse = {
       success: true,
-      data: result
+      data: {
+        taskId: taskId,
+        status: result.status,
+      }
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     next(error);
   }

@@ -36,11 +36,13 @@ export const MediaType = {
 
 export type MediaType = (typeof MediaType)[keyof typeof MediaType];
 
+export type MediaStatus = 'completed' | 'processing' | 'pending' | 'failed' | 'staged'
+
 // Core interfaces
 export interface MediaAsset {
   id: string;
-  url: string;
-  filename?: string; // For frontend compatibility
+  status: MediaStatus;
+  url?: string | null;
   type?: 'image' | 'video' | 'audio'; // For frontend compatibility
   size?: number; // For frontend compatibility
   width?: number; // For images/video

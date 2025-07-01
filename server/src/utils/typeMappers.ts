@@ -1,5 +1,5 @@
 import { Project as PrismaProject, Segment as PrismaSegment, Image, Video, Audio } from '@prisma/client';
-import { Project, VideoSegment, MediaAsset, ProjectStatus, WorkflowStage, ApprovalStatus } from '../types/shared';
+import { Project, VideoSegment, MediaAsset, ProjectStatus, WorkflowStage, ApprovalStatus, MediaStatus } from '../types/shared';
 
 // Type for Prisma project with relations
 type PrismaProjectWithRelations = PrismaProject & {
@@ -54,8 +54,9 @@ const mapImageAsset = (image: Image): MediaAsset => {
   return {
     id: image.id,
     url: image.url,
-    filename: extractFilenameFromUrl(image.url),
+    isSelected: image.isSelected,
     type: 'image',
+    status: 'completed',
     size: metadata.size || 0,
     width: metadata.width,
     height: metadata.height,
@@ -73,8 +74,9 @@ const mapVideoAsset = (video: Video): MediaAsset => {
   return {
     id: video.id,
     url: video.url,
-    filename: extractFilenameFromUrl(video.url),
+    isSelected: video.isSelected,
     type: 'video',
+    status: video.status as MediaStatus,
     size: metadata.size || 0,
     width: metadata.width,
     height: metadata.height,
@@ -93,12 +95,12 @@ const mapAudioAsset = (audio: Audio): MediaAsset => {
   return {
     id: audio.id,
     url: audio.url,
-    filename: extractFilenameFromUrl(audio.url),
     type: 'audio',
+    status: 'completed',
     size: metadata.size || 0,
     prompt: audio.text, // Audio uses 'text' field as prompt
     metadata,
-    isSelected: audio.isSelected || false, // New field for audio selection
+    isSelected: audio.isSelected, // New field for audio selection
     voice: audio.voice, // Voice type used for generation
     text: audio.text, // Text that was converted to speech
     createdAt: audio.createdAt.toISOString(),
@@ -125,7 +127,6 @@ const calculateSegmentDuration = (segment: PrismaSegmentWithRelations): number =
 // Convert Prisma Segment to VideoSegment
 export const mapVideoSegment = (segment: PrismaSegmentWithRelations): VideoSegment => {
   const duration = calculateSegmentDuration(segment);
-  const scriptApprovalStatus = segment.scriptApprovalStatus as ApprovalStatus;
   
   return {
     id: segment.id,

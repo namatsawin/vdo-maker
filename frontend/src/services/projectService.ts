@@ -86,6 +86,14 @@ class ProjectService {
     }
   }
 
+  // Select video for segment
+  async selectSegmentVideo(_projectId: string, _segmentId: string, videoId: string): Promise<void> {
+    const response = await apiClient.selectVideo(videoId);
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to select video');
+    }
+  }
+
   // Get all images for segment
   async getSegmentImages(segmentId: string): Promise<Array<{
     id: string;

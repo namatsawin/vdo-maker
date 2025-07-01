@@ -88,16 +88,18 @@ model Image {
 }
 
 model Video {
-  id        String   @id @default(cuid())
-  url       String
-  prompt    String
-  taskId    String?  // For tracking async video generation tasks
-  duration  Int?
-  metadata  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  segmentId String
-  segment   Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  url        String?
+  prompt     String   @db.Text
+  duration   Int?
+  metadata   String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  segmentId  String
+  taskId     String
+  status     String
+  isSelected Boolean  @default(false)
+  segment    Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
 
   @@map("videos")
 }

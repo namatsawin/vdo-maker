@@ -30,10 +30,11 @@ interface ProjectActions {
   generateProjectScript: (title: string, description?: string, model?: string) => Promise<VideoSegment[]>;
   generateSegmentImage: (segmentId: string, prompt: string, aspectRatio: string, model: string, safetyFilterLevel?: string, personGeneration?: string) => Promise<string>;
   generateAllSegmentImages: (aspectRatio: string, model: string, safetyFilterLevel?: string, personGeneration?: string) => Promise<{ success: number; skipped: number; failed: number; }>;
-  generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string) => Promise<{ taskId: string; videoUrl?: string }>;
+  generateSegmentVideo: (segmentId: string, imageUrl: string, prompt: string, duration?: number, negativePrompt?: string, mode?: string) => Promise<{ taskId: string; videoUrl?: string }>;
   generateSegmentAudio: (segmentId: string, text: string, voice?: string, model?: string) => Promise<string>;
   selectSegmentAudio: (projectId: string, segmentId: string, audioId: string) => Promise<void>;
   selectSegmentImage: (projectId: string, segmentId: string, imageId: string) => Promise<void>;
+  selectSegmentVideo: (projectId: string, segmentId: string, videoId: string) => Promise<void>;
   getSegmentImages: (segmentId: string) => Promise<Array<{
     id: string;
     url: string;
@@ -268,7 +269,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
           };
 
           set({ 
-            currentProject: updatedProject,
+            currentProject: updatedProject as any,
             isLoading: false 
           });
 
@@ -349,7 +350,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     };
   },
 
-  generateSegmentVideo: async (_segmentId: string, imageUrl: string, prompt: string) => {
+  generateSegmentVideo: async (_segmentId: string, imageUrl: string, prompt: string, duration: number = 5, negativePrompt: string = '', mode: string = 'std') => {
     set({ isLoading: true, error: null });
 
     try {
@@ -358,8 +359,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
         imageUrl, 
         prompt,
         segmentId: _segmentId,
-        duration: 5,
-        aspectRatio: '16:9'
+        duration: duration,
+        negativePrompt: negativePrompt,
+        mode: mode
       });
 
       if (result && (result.taskId || result.videoUrl)) {
@@ -525,6 +527,59 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to select image';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  // Select video for segment
+  selectSegmentVideo: async (projectId: string, segmentId: string, videoId: string) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      await projectService.selectSegmentVideo(projectId, segmentId, videoId);
+
+      // Update the local state to reflect the selection
+      set((state) => ({
+        projects: state.projects.map(p => 
+          p.id === projectId
+            ? {
+                ...p,
+                segments: p.segments.map(s => 
+                  s.id === segmentId
+                    ? {
+                        ...s,
+                        videos: s.videos.map(vid => ({
+                          ...vid,
+                          isSelected: vid.id === videoId
+                        }))
+                      }
+                    : s
+                )
+              }
+            : p
+        ),
+        currentProject: state.currentProject?.id === projectId
+          ? {
+              ...state.currentProject,
+              segments: state.currentProject.segments.map(s => 
+                s.id === segmentId
+                  ? {
+                      ...s,
+                      videos: s.videos.map(vid => ({
+                        ...vid,
+                        isSelected: vid.id === videoId
+                      }))
+                    }
+                  : s
+              )
+            }
+          : state.currentProject,
+        isLoading: false
+      }));
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to select video';
       set({ error: errorMessage, isLoading: false });
       throw error;
     }

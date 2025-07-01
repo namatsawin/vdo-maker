@@ -1,0 +1,7 @@
+ALTER TABLE "videos" 
+  ALTER COLUMN "url" DROP NOT NULL,
+  ADD COLUMN "status" TEXT NOT NULL,
+  ALTER COLUMN "taskId" SET NOT NULL;
+
+ALTER TABLE "videos" 
+  ADD COLUMN "url" TEXT;

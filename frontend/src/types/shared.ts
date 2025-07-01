@@ -66,13 +66,15 @@ export const MediaType = {
   AUDIO: 'AUDIO',
 } as const;
 
+export type MediaStatus = 'completed' | 'processing' | 'pending' | 'failed' | 'staged'
+
 export type MediaType = (typeof MediaType)[keyof typeof MediaType];
 
 // Core interfaces
 export interface MediaAsset {
   id: string;
   url: string;
-  filename?: string; // For frontend compatibility
+  status: MediaStatus;
   type?: 'image' | 'video' | 'audio'; // For frontend compatibility
   size?: number; // For frontend compatibility
   width?: number; // For images/video
@@ -80,7 +82,7 @@ export interface MediaAsset {
   prompt?: string;
   metadata?: Record<string, any>;
   duration?: number; // for video/audio in seconds
-  isSelected?: boolean; // For audio selection (multiple audio files per segment)
+  isSelected?: boolean; // For video/audio selection (multiple files per segment)
   voice?: string; // For audio files - voice type used
   text?: string; // For audio files - text that was converted to speech
   createdAt: string;
@@ -207,8 +209,9 @@ export interface VideoGenerationRequest {
   imageUrl: string;
   prompt: string;
   segmentId: string;
-  duration?: number;
-  aspectRatio?: string;
+  duration: number;
+  negativePrompt: string;
+  mode: string;
 }
 
 export interface AudioGenerationRequest {

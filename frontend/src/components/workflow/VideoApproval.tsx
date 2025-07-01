@@ -1,88 +1,173 @@
-import { useState, useEffect } from 'react';
-import { Check, X, RotateCcw, Download, Loader2, Video } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Check, X, RotateCcw, Download, Loader2, Video, BrushCleaning, Wand2, Clock, Eye, Image as ImageIcon, Play, Pause, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Textarea } from '@/components/ui/Textarea';
+import { Label } from '@/components/ui/Label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { PromptAdvisor } from './PromptAdvisor';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
-import type { VideoSegment, ApprovalStatus } from '@/types';
-import { convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
+import { useAIStore } from '@/stores/aiStore';
+import { ApprovalStatus } from '@/types'
+import type { VideoSegment, MediaAsset, ApprovalStatus as IApprovalStatus, MediaStatus } from '@/types';
+import { convertToLegacyApprovalStatus, isApprovalStatus } from '@/utils/typeCompatibility';
+import { cn } from '@/lib/utils';
 
 interface VideoApprovalProps {
   segment: VideoSegment;
   index: number;
-  imageUrl?: string;
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
 }
 
-interface GeneratedVideo {
-  id: string;
-  url: string;
-  taskId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  prompt: string;
-  duration: number;
-  generatedAt: string;
-}
+// Duration options supported by the model
+const DURATION_OPTIONS = [
+  { value: 5, label: '5 seconds', description: 'Short, focused clip' },
+  { value: 10, label: '10 seconds', description: 'Extended scene' },
+] as const;
+
+// Mode options for video generation
+const MODE_OPTIONS = [
+  { value: 'std', label: 'Standard', description: 'Balanced quality and speed' },
+  { value: 'pro', label: 'Professional', description: 'Higher quality, longer processing' },
+] as const;
+
+// Default negative prompt
+const DEFAULT_NEGATIVE_PROMPT = 'blurry, low quality, pixelated, noisy, grainy, compression artifacts, distorted, deformed, bad anatomy, poorly drawn, disfigured, malformed, extra limbs, fused limbs, mutated, missing body parts, watermarks, text, signature, logo, cropped, out of frame, unnatural proportions, ugly, bad composition';
 
 export function VideoApproval({
   segment,
   index,
-  imageUrl,
   onApprove,
-  onReject,
+  onReject
 }: VideoApprovalProps) {
-  const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [videoPrompt, setVideoPrompt] = useState(segment.videoPrompt || '');
+  const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT);
+  const [selectedDuration, setSelectedDuration] = useState<number>(5);
+  const [selectedMode, setSelectedMode] = useState<string>('std');
+  const [showPromptAdvisor, setShowPromptAdvisor] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
   
-  const { generateSegmentVideo } = useProjectStore();
+  const { generateSegmentVideo, selectSegmentVideo, currentProject, loadProject } = useProjectStore();
   const { addToast } = useUIStore();
 
-  // Generate video when component mounts and imageUrl is available
-  useEffect(() => {
-    if (!generatedVideo && imageUrl && segment.videoPrompt) {
-      generateInitialVideo();
+  // Helper function to safely parse video metadata
+  const parseVideoMetadata = (video: MediaAsset) => {
+    try {
+      if (!video.metadata) {
+        return {};
+      }
+      
+      if (typeof video.metadata === 'string') {
+        return JSON.parse(video.metadata);
+      } else if (typeof video.metadata === 'object' && video.metadata !== null) {
+        return video.metadata;
+      } else {
+        return {};
+      }
+    } catch (error) {
+      return {};
     }
-  }, [imageUrl, segment.videoPrompt]);
+  };
 
-  const generateInitialVideo = async () => {
+  // Get the selected image from the segment
+  const selectedImage = segment.images?.find(img => img.isSelected) || segment.images?.[0] || null;
+  const imageUrl = selectedImage?.url;
+
+  const availableVideos = useMemo(() => {
+    if (!segment.videos.length) return []
+
+    return segment.videos.sort((a, b) => {
+      const x = new Date(a.createdAt).getTime()
+      const y = new Date(b.createdAt).getTime()
+      return y - x
+    })
+  }, [segment.videos])
+  
+  const selectedVideo = availableVideos.find(video => video.isSelected);
+  const hasVideo = availableVideos.length
+
+  const currentStatus = segment.videoApprovalStatus;
+  const isApproved = isApprovalStatus(currentStatus, 'approved');
+
+  // Initialize video prompt from segment
+  useEffect(() => {
+    if (segment.videoPrompt && !videoPrompt) {
+      setVideoPrompt(segment.videoPrompt);
+    }
+  }, [segment.videoPrompt]);
+
+  // Poll for pending video status
+  useEffect(() => {
+    if (!selectedVideo) return;
+
+    // Safely get taskId and status from metadata using helper function
+    const metadata = parseVideoMetadata(selectedVideo);
+    const taskId = metadata.taskId;
+    const currentStatus = getVideoStatus(selectedVideo);
+
+    const isPending = (value: MediaStatus) => {
+      return value === 'pending' || value === 'processing' || value === 'staged'
+    }
+    
+    if (!taskId) return;
+    
+    if (!isPending(currentStatus)) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { checkVideoStatus } = useAIStore.getState();
+        const statusData = await checkVideoStatus(taskId);
+        
+        if (isPending(statusData.status)) return;
+
+        if (currentProject) {
+          await loadProject(currentProject.id)
+          clearInterval(pollInterval)
+        }
+      } catch (error) {
+        console.error('Error polling video status:', error);
+      }
+    }, 12000); // Poll every 12 seconds
+
+    // Cleanup interval on unmount or when video is completed
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [selectedVideo?.id, currentProject]);
+
+  const generateVideo = async () => {
     if (!imageUrl) {
       addToast({
         type: 'error',
-        title: 'Image Required',
-        message: 'Please approve an image first before generating video.',
+        title: 'No Image Selected',
+        message: 'Please select an image first before generating video.',
       });
       return;
     }
 
     setIsGenerating(true);
+    
     try {
-      const result = await generateSegmentVideo(segment.id, imageUrl, segment.videoPrompt);
+      await generateSegmentVideo(
+        segment.id, 
+        imageUrl, 
+        videoPrompt, 
+        selectedDuration,
+        negativePrompt,
+        selectedMode
+      );
       
-      const video: GeneratedVideo = {
-        id: `video-${segment.id}`,
-        url: result.videoUrl || '',
-        taskId: result.taskId,
-        status: result.videoUrl ? 'completed' : 'processing',
-        prompt: segment.videoPrompt,
-        duration: segment.duration || 0,
-        generatedAt: new Date().toISOString(),
-      };
+      addToast({
+        type: 'info',
+        title: 'Video Generation Started',
+        message: `Your ${selectedDuration}-second video is being processed. This may take several minutes.`,
+      });
 
-      setGeneratedVideo(video);
-
-      if (video.status === 'completed') {
-        addToast({
-          type: 'success',
-          title: 'Video Generated',
-          message: 'Video generated successfully!',
-        });
-      } else {
-        addToast({
-          type: 'info',
-          title: 'Video Processing',
-          message: 'Video is being processed. This may take a few minutes.',
-        });
+      if (currentProject) {
+        await loadProject(currentProject.id)
       }
     } catch (error) {
       console.error('Video generation failed:', error);
@@ -100,8 +185,8 @@ export function VideoApproval({
     if (!imageUrl) {
       addToast({
         type: 'error',
-        title: 'Image Required',
-        message: 'Please approve an image first before regenerating video.',
+        title: 'No Image Selected',
+        message: 'Please select an image first before generating video.',
       });
       return;
     }
@@ -109,25 +194,24 @@ export function VideoApproval({
     setIsGenerating(true);
     
     try {
-      const result = await generateSegmentVideo(segment.id, imageUrl, segment.videoPrompt);
-      
-      const newVideo: GeneratedVideo = {
-        id: `video-${segment.id}-${Date.now()}`,
-        url: result.videoUrl || '',
-        taskId: result.taskId,
-        status: result.videoUrl ? 'completed' : 'processing',
-        prompt: segment.videoPrompt,
-        duration: segment.duration || 0,
-        generatedAt: new Date().toISOString(),
-      };
-
-      setGeneratedVideo(newVideo);
+      await generateSegmentVideo(
+        segment.id, 
+        imageUrl, 
+        videoPrompt, 
+        selectedDuration,
+        negativePrompt,
+        selectedMode
+      );
 
       addToast({
-        type: 'success',
-        title: 'Video Regenerated',
-        message: 'New video generated successfully!',
+        type: 'info',
+        title: 'Video Regeneration Started',
+        message: `Your new ${selectedDuration}-second video is being processed.`,
       });
+
+      if (currentProject) {
+        await loadProject(currentProject.id)
+      }
     } catch (error) {
       console.error('Video regeneration failed:', error);
       addToast({
@@ -140,7 +224,27 @@ export function VideoApproval({
     }
   };
 
-  const handleDownload = (video: GeneratedVideo) => {
+  const handleVideoSelect = async (videoId: string) => {
+    if (!currentProject) return;
+    
+    try {
+      await selectSegmentVideo(currentProject.id, segment.id, videoId);
+      addToast({
+        type: 'success',
+        title: 'Video Selected',
+        message: 'Video selection updated successfully.',
+      });
+    } catch (error) {
+      console.error('Failed to select video:', error);
+      addToast({
+        type: 'error',
+        title: 'Selection Failed',
+        message: 'Failed to select video. Please try again.',
+      });
+    }
+  };
+
+  const handleDownload = (video: MediaAsset) => {
     const link = document.createElement('a');
     link.href = video.url;
     link.download = `segment-${index + 1}-video.mp4`;
@@ -149,18 +253,26 @@ export function VideoApproval({
     document.body.removeChild(link);
   };
 
-  const getStatusColor = (status: ApprovalStatus) => {
-    const legacyStatus = convertToLegacyApprovalStatus(status);
-    switch (legacyStatus) {
-      case 'approved':
+  const getStatusColor = (status: IApprovalStatus) => {
+    switch (status) {
+      case ApprovalStatus.APPROVED:
         return 'text-green-600 bg-green-50 border-green-200';
-      case 'rejected':
+      case ApprovalStatus.REJECTED:
         return 'text-red-600 bg-red-50 border-red-200';
-      case 'pending':
+      case ApprovalStatus.PROCESSING:
         return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
+  };
+
+  const getVideoStatus = (video: MediaAsset) => {
+    return video.status
+  };
+
+  const isVideoPending = (video: MediaAsset) => {
+    const status = getVideoStatus(video);
+    return status === 'pending' || status === 'processing' || status === 'staged';
   };
 
   return (
@@ -168,130 +280,259 @@ export function VideoApproval({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 text-blue-500" />
+            <Video className="h-5 w-5 text-purple-500" />
             Segment {index + 1} - Video Generation
           </CardTitle>
-          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(segment.videoApprovalStatus || 'draft')}`}>
-            {(segment.videoApprovalStatus || 'draft').toUpperCase()}
+          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(segment.videoApprovalStatus || 'DRAFT')}`}>
+            {convertToLegacyApprovalStatus(segment.videoApprovalStatus || 'DRAFT')}
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
-        {/* Script and Prompt */}
-        <div className="space-y-3">
+        {/* Video Generation Controls */}
+        <div className="space-y-4">
+          {/* Video Prompt */}
           <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-1">Script:</h4>
-            <p className="text-sm bg-gray-50 p-3 rounded-lg">{segment.script}</p>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-sm font-medium text-gray-700">Video Prompt:</Label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowPromptAdvisor(true)}
+                className="text-xs"
+              >
+                <BrushCleaning className="h-3 w-3 mr-1" />
+                Improve Prompt
+              </Button>
+            </div>
+            <Textarea
+              value={videoPrompt}
+              onChange={(e) => setVideoPrompt(e.target.value)}
+              placeholder="Describe the video you want to generate..."
+              className="min-h-[100px] resize-none"
+              disabled={isGenerating}
+            />
           </div>
+
+          {/* Generation Settings */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Duration Selection */}
+            <div>
+              <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                Video Duration:
+              </Label>
+              <Select
+                value={selectedDuration.toString()}
+                onValueChange={(value) => setSelectedDuration(parseInt(value))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  {DURATION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value.toString()}>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">{option.label}</span>
+                        <span className="text-xs text-gray-500">- {option.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Mode Selection */}
+            <div>
+              <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Wand2 className="h-4 w-4 text-purple-500" />
+                Generation Mode:
+              </Label>
+              <Select
+                value={selectedMode}
+                onValueChange={setSelectedMode}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select mode" />
+                </SelectTrigger>
+                <SelectContent className='bg-white'>
+                  {MODE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">{option.label}</span>
+                        <span className="text-xs text-gray-500">- {option.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Negative Prompt */}
           <div>
-            <h4 className="font-medium text-sm text-gray-700 mb-1">Video Prompt:</h4>
-            <p className="text-sm bg-blue-50 p-3 rounded-lg text-blue-800">{segment.videoPrompt}</p>
+            <Label className="text-sm font-medium text-gray-700">Negative Prompt:</Label>
+            <Textarea
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              placeholder="Describe what you don't want in the video..."
+              className="resize-none text-sm"
+              rows={3}
+              disabled={isGenerating}
+            />
+          </div>
+
+          {/* First Frame Image Button */}
+          {selectedImage && (
+            <Button
+              size="sm"
+              onClick={() => setShowImagePreview(true)}
+              className="ml-auto flex items-center gap-2 cursor-pointer hover:bg-gray-50"
+            >
+              <Eye className="h-4 w-4" />
+              Image Reference
+            </Button>          
+          )}
+        </div>
+
+        {/* Selected Video Display */}
+        {selectedVideo && (
+          <div className="space-y-4">
+            {/* Pending/Processing Status */}
+            {isVideoPending(selectedVideo) && (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                  <span className="font-medium text-blue-900">
+                    {getVideoStatus(selectedVideo) === 'pending' ? 'Video Generation Queued' : 'Generating Video...'}
+                  </span>
+                </div>
+                <div className="text-sm text-blue-700">
+                  Your {selectedVideo.duration || selectedDuration}-second video is being processed. 
+                  This may take several minutes. Status will update automatically.
+                </div>
+                {(() => {
+                  // Safely get taskId from metadata using helper function
+                  const metadata = parseVideoMetadata(selectedVideo);
+                  const taskId = metadata.taskId;
+                  
+                  return taskId ? (
+                    <div className="text-xs text-blue-600 mt-2">
+                      Task ID: {taskId}
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
+            {/* Completed Video */}
+            {!isVideoPending(selectedVideo) && selectedVideo.url && (
+              <div className="border rounded-lg p-4">
+                <div className="relative mb-3 border-b pb-6">
+                  <video
+                    src={selectedVideo.url}
+                    className="w-full mx-auto max-w-3xl aspect-video object-contain rounded-md bg-gray-100"
+                    controls
+                    autoPlay
+                    poster={selectedImage?.url} // Use first frame as poster
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">
+                    {selectedVideo.duration || selectedDuration}s • {selectedMode.toUpperCase()}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownload(selectedVideo)}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                </div>
+
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p><strong>Generated:</strong> {new Date(selectedVideo.createdAt).toLocaleString()}</p>
+                  {selectedVideo.prompt && (
+                    <p><strong>Prompt:</strong> {selectedVideo.prompt.substring(0, 150)}...</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className={cn('space-y-4', { hidden: !hasVideo })}>
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-gray-900">Select Video ({availableVideos.length} available)</h4>
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">Choose Video:</Label>
+            <Select
+              value={selectedVideo?.id || ''}
+              onValueChange={handleVideoSelect}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a video" />
+              </SelectTrigger>
+              <SelectContent className='bg-white'>
+                {availableVideos.map((video) => (
+                  <SelectItem key={video.id} value={video.id} disabled={video.status === 'failed'}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Video</span>
+                      <span className="text-xs text-gray-500">
+                        ({video.duration}s • {new Date(video.createdAt).toLocaleString()})
+                      </span>
+                      <span className={cn('text-xs text-blue-600', { hidden: !isVideoPending(video) })}>(Processing...)</span>
+                      <span className={cn('text-xs text-red-600', { hidden: video.status !== 'failed' })}>(Failed)</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Image Reference */}
-        {imageUrl && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm text-gray-700">Source Image:</h4>
-            <img
-              src={imageUrl}
-              alt="Source image for video"
-              className="w-full max-w-md h-32 object-cover rounded-lg border"
-            />
-          </div>
-        )}
-
-        {/* No Image Warning */}
-        {!imageUrl && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-yellow-800">
-              <Video className="h-5 w-5" />
-              <span className="font-medium">Image Required</span>
-            </div>
-            <p className="text-sm text-yellow-700 mt-1">
-              Please approve an image in the previous step before generating video.
-            </p>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {isGenerating && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-3" />
-              <p className="text-sm text-gray-600">Generating video with AI...</p>
-              <p className="text-xs text-gray-400 mt-1">This may take several minutes</p>
-            </div>
-          </div>
-        )}
-
-        {/* Generated Video */}
-        {!isGenerating && generatedVideo && generatedVideo.status === 'completed' && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm text-gray-700">Generated Video:</h4>
-            <div className="relative bg-black rounded-lg overflow-hidden">
-              <video
-                src={generatedVideo.url}
-                className="w-full h-64 object-contain"
-                controls
-              />
-              <div className="absolute top-3 right-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDownload(generatedVideo)}
-                  className="bg-white/90 hover:bg-white"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="text-xs text-gray-500 space-y-1">
-              <p><strong>Prompt:</strong> {generatedVideo.prompt}</p>
-              <p><strong>Duration:</strong> {generatedVideo.duration}s</p>
-              <p><strong>Generated:</strong> {new Date(generatedVideo.generatedAt).toLocaleString()}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Processing State */}
-        {!isGenerating && generatedVideo && generatedVideo.status === 'processing' && (
-          <div className="text-center py-12">
-            <div className="text-blue-500 mb-4">
-              <Loader2 className="mx-auto h-12 w-12 animate-spin" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Video Processing</h3>
-            <p className="text-gray-500 mb-4">
-              Your video is being processed. This usually takes 2-5 minutes.
-            </p>
-            <p className="text-xs text-gray-400">Task ID: {generatedVideo.taskId}</p>
-          </div>
-        )}
-
-        {/* No Video State */}
-        {!isGenerating && !generatedVideo && imageUrl && (
+        {/* No Videos State */}
+        {availableVideos.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Video className="mx-auto h-12 w-12" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No video generated yet</h3>
-            <p className="text-gray-500 mb-4">Click "Generate Video" to create an AI-generated video</p>
-            <Button onClick={generateInitialVideo} className="flex items-center gap-2">
-              <Video className="h-4 w-4" />
-              Generate Video
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Generate Video</h3>
+            <p className="text-gray-500 mb-4">
+              Use the selected image as the first frame and generate a video
+            </p>
+            <Button 
+              onClick={generateVideo} 
+              variant="ghost"
+              className="flex items-center gap-2 mx-auto cursor-pointer hover:bg-gray-50"
+              disabled={!videoPrompt.trim() || !selectedImage || isGenerating}
+            >
+              {isGenerating ? 
+                <>Loading...<Loader2 className="h-6 w-6 animate-spin" /></> : 
+                <>Click here to generate</>
+              }
             </Button>
+            {!videoPrompt.trim() && (
+              <p className="text-xs text-gray-400 mt-2">Please enter a video prompt first</p>
+            )}
+            {!selectedImage && (
+              <p className="text-xs text-gray-400 mt-2">Please select an image first</p>
+            )}
           </div>
         )}
 
         {/* Action Buttons */}
-        {generatedVideo && generatedVideo.status === 'completed' && (
-          <div className="flex items-center justify-between pt-4 border-t">
+        {selectedVideo && !isVideoPending(selectedVideo) && !isApproved && (
+          <div className="flex items-center gap-3">
             <Button
-              variant="outline"
               onClick={handleRegenerate}
               disabled={isGenerating}
+              variant="outline"
               className="flex items-center gap-2"
             >
               {isGenerating ? (
@@ -299,10 +540,10 @@ export function VideoApproval({
               ) : (
                 <RotateCcw className="h-4 w-4" />
               )}
-              Regenerate
+              Regenerate ({selectedDuration}s)
             </Button>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 ml-auto">
               <Button
                 variant="outline"
                 onClick={() => onReject(segment.id)}
@@ -313,7 +554,8 @@ export function VideoApproval({
               </Button>
               <Button
                 onClick={() => onApprove(segment.id)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                disabled={selectedVideo.status !== 'completed'}
               >
                 <Check className="h-4 w-4" />
                 Approve Video
@@ -321,7 +563,55 @@ export function VideoApproval({
             </div>
           </div>
         )}
+
+        {/* Approved State */}
+        {isApproved && (
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Check className="h-5 w-5 text-green-600" />
+              <span className="font-medium text-green-900">Video Approved</span>
+            </div>
+            <p className="text-sm text-green-700 mt-1">
+              This video has been approved and will be used in the final assembly.
+            </p>
+          </div>
+        )}
       </CardContent>
+
+      <PromptAdvisor
+        currentPrompt={videoPrompt}
+        onPromptUpdate={setVideoPrompt}
+        isOpen={showPromptAdvisor}
+        onClose={() => setShowPromptAdvisor(false)}
+      />
+
+      {/* Image Preview Modal */}
+      {showImagePreview && selectedImage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="p-6">
+              <img 
+                src={selectedImage.url} 
+                alt={`Segment ${index + 1} selected image`}
+                className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+              />
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Segment {index + 1}:</strong> This approved image will be used as the first frame 
+                  for your {selectedDuration}-second video generation.
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                 Click outside to close
+                </p>
+              </div>
+            </div>
+          </div>
+          <div 
+            className="absolute inset-0 -z-10" 
+            onClick={() => setShowImagePreview(false)}
+          />
+        </div>
+      )}
     </Card>
   );
 }

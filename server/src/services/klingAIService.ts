@@ -1,32 +1,29 @@
+import { MediaStatus } from '@/types';
 import { logger } from '@/utils/logger';
 
 export interface VideoGenerationRequest {
-  imageUrl?: string;
-  imageBase64?: string;
+  imageUrl: string;
   prompt: string;
-  duration?: number; // in seconds, typically 5-10
-  aspectRatio?: '16:9' | '9:16' | '1:1';
-  mode?: 'std' | 'pro';
+  negativePrompt?: string;
+  duration?: number;
+  mode?: string
 }
 
 export interface VideoGenerationResponse {
   success: boolean;
-  taskId?: string;
-  videoUrl?: string;
-  status?: 'pending' | 'processing' | 'completed' | 'failed';
-  error?: string;
-  metadata?: {
+  taskId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  input?: {
     prompt: string;
     duration: number;
-    aspectRatio: string;
-    generationTime?: number;
-    estimatedWaitTime?: number;
+    mode: string;
+    negative_prompt?: string;
   };
 }
 
 export interface VideoStatusResponse {
   success: boolean;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: MediaStatus;
   videoUrl?: string;
   progress?: number;
   error?: string;
@@ -51,35 +48,30 @@ class KlingAIService {
   }
 
   async generateVideo(request: VideoGenerationRequest): Promise<VideoGenerationResponse> {
-    const startTime = Date.now();
-    
     try {
-      logger.info(`🎬 Generating video with Kling AI: "${request.prompt.substring(0, 50)}..."`);
-
-      // Check if API credentials are available
-      if (!this.apiKey) {
-        return this.generateFallbackVideo(request, startTime);
+      // Check if we're in development mode and should use mock responses
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const useMockMode = isDevelopment && (!this.apiKey || process.env.USE_MOCK_PIAPI === 'true');
+      
+      if (useMockMode) {
+        logger.info('🎭 Using mock PiAPI response for development');
+        return this.generateMockVideoResponse(request);
       }
 
-      // Validate input
-      if (!request.imageUrl && !request.imageBase64) {
-        throw new Error('Either imageUrl or imageBase64 is required');
-      }
-
-      // Prepare the request payload
       const payload = {
-        model: 'kling-v1',
-        task_type: 'i2v', // image to video
+        model: 'kling',
+        task_type: 'video_generation', // image to video
         input: {
+          version: "1.0",
           image_url: request.imageUrl,
-          image_base64: request.imageBase64,
           prompt: request.prompt,
-          cfg_scale: 0.5,
-          duration: request.duration || 5,
-          aspect_ratio: request.aspectRatio || '16:9',
-          mode: request.mode || 'std'
+          duration: request.duration,
+          mode: request.mode,
+          negative_prompt: request.negativePrompt
         }
       };
+
+      console.log('generateVideo data:', payload)
 
       const response = await fetch(`${this.baseUrl}/api/v1/task`, {
         method: 'POST',
@@ -87,42 +79,38 @@ class KlingAIService {
           'X-API-Key': this.apiKey,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        // Add timeout to prevent hanging
+        signal: AbortSignal.timeout(30000) // 30 second timeout
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error(`❌ Kling AI API error: ${response.status} - ${errorText}`);
-        return this.generateFallbackVideo(request, startTime);
-      }
-
-      const data = await response.json() as any;
-      const generationTime = Date.now() - startTime;
-
-      if (data.task_id) {
-        logger.info(`✅ Video generation task created: ${data.task_id} in ${generationTime}ms`);
+        logger.error(`PiAPI error: ${response.status} - ${errorText}`);
         
-        return {
-          success: true,
-          taskId: data.task_id,
-          status: 'pending',
-          metadata: {
-            prompt: request.prompt,
-            duration: request.duration || 5,
-            aspectRatio: request.aspectRatio || '16:9',
-            generationTime,
-            estimatedWaitTime: 60000 // 1 minute estimate
-          }
-        };
-      } else {
-        logger.error('❌ Unexpected Kling AI response format');
-        return this.generateFallbackVideo(request, startTime);
+        // Fallback to mock in development if API fails
+        if (isDevelopment) {
+          logger.warn('🎭 PiAPI failed, falling back to mock response');
+          return this.generateMockVideoResponse(request);
+        }
+        
+        throw Error(`Kling AI API error: ${response.status} - ${errorText}`)
       }
 
+      const { data = {} } = await response.json() as any;
+
+      const taskId = data.task_id
+      const status = data.status
+
+      return {
+        success: true,
+        taskId,
+        status,
+        input: data.input,
+      }
     } catch (error) {
-      const generationTime = Date.now() - startTime;
       logger.error('❌ Kling AI service error:', error);
-      return this.generateFallbackVideo(request, startTime);
+      throw error
     }
   }
 
@@ -131,28 +119,30 @@ class KlingAIService {
       logger.info(`📊 Checking video generation status: ${taskId}`);
 
       if (!this.apiKey) {
-        return this.getFallbackVideoStatus(taskId);
+        throw Error('API Key is missing')
       }
 
       const response = await fetch(`${this.baseUrl}/api/v1/task/${taskId}`, {
         method: 'GET',
         headers: {
           'X-API-Key': this.apiKey,
-        }
+        },
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error(`❌ Kling AI status check error: ${response.status} - ${errorText}`);
-        return this.getFallbackVideoStatus(taskId);
+        throw Error(`Kling AI status check error: ${response.status} - ${errorText}`)
       }
 
-      const data = await response.json() as any;
+      const { data } = await response.json() as any;
 
+      console.log('dassssstatusssta:', data.status)
+
+      const url = data.output?.works?.[0]?.video.resource_without_watermark ?? data.output?.works?.[0]?.video.resource ?? ''
       return {
         success: true,
         status: this.mapStatus(data.status),
-        videoUrl: data.output?.video_url,
+        videoUrl: url,
         progress: data.progress || 0,
         metadata: {
           taskId,
@@ -163,11 +153,11 @@ class KlingAIService {
 
     } catch (error) {
       logger.error('❌ Kling AI status check error:', error);
-      return this.getFallbackVideoStatus(taskId);
+      throw error
     }
   }
 
-  private mapStatus(apiStatus: string): 'pending' | 'processing' | 'completed' | 'failed' {
+  private mapStatus(apiStatus: string): MediaStatus {
     switch (apiStatus?.toLowerCase()) {
       case 'pending':
       case 'queued':
@@ -186,89 +176,18 @@ class KlingAIService {
     }
   }
 
-  private generateFallbackVideo(request: VideoGenerationRequest, startTime: number): VideoGenerationResponse {
-    const generationTime = Date.now() - startTime;
-    
-    logger.info(`🔄 Using fallback video generation for: "${request.prompt.substring(0, 50)}..."`);
-    
-    // Generate a mock task ID
-    const taskId = `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Create a placeholder video URL (using a sample video service)
-    const aspectRatio = request.aspectRatio || '16:9';
-    let dimensions = '1280x720';
-    
-    switch (aspectRatio) {
-      case '9:16':
-        dimensions = '720x1280';
-        break;
-      case '1:1':
-        dimensions = '720x720';
-        break;
-      default:
-        dimensions = '1280x720';
-    }
-
-    // Use a sample video service or placeholder
-    const videoUrl = `https://sample-videos.com/zip/10/mp4/SampleVideo_${dimensions.replace('x', 'x')}_1mb.mp4`;
-
-    return {
-      success: true,
-      taskId,
-      status: 'completed', // Immediately completed for fallback
-      videoUrl,
-      metadata: {
-        prompt: request.prompt,
-        duration: request.duration || 5,
-        aspectRatio: aspectRatio,
-        generationTime
-      }
-    };
-  }
-
-  private getFallbackVideoStatus(taskId: string): VideoStatusResponse {
-    logger.info(`🔄 Using fallback video status for task: ${taskId}`);
-    
-    // For fallback, always return completed status
-    return {
-      success: true,
-      status: 'completed',
-      videoUrl: `https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4`,
-      progress: 100,
-      metadata: {
-        taskId,
-        createdAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
-      }
-    };
-  }
-
   async validateVideoRequest(request: VideoGenerationRequest): Promise<{ valid: boolean; reason?: string }> {
     // Basic request validation
     if (!request.prompt || request.prompt.trim().length === 0) {
       return { valid: false, reason: 'Prompt cannot be empty' };
     }
 
-    if (request.prompt.length > 500) {
-      return { valid: false, reason: 'Prompt too long (max 500 characters)' };
-    }
-
-    if (!request.imageUrl && !request.imageBase64) {
+    if (!request.imageUrl) {
       return { valid: false, reason: 'Either imageUrl or imageBase64 is required' };
     }
 
     if (request.duration && (request.duration < 1 || request.duration > 10)) {
       return { valid: false, reason: 'Duration must be between 1 and 10 seconds' };
-    }
-
-    // Check for potentially harmful content
-    const bannedWords = ['violence', 'explicit', 'harmful', 'illegal'];
-    const lowerPrompt = request.prompt.toLowerCase();
-    
-    for (const word of bannedWords) {
-      if (lowerPrompt.includes(word)) {
-        return { valid: false, reason: `Prompt contains inappropriate content: ${word}` };
-      }
     }
 
     return { valid: true };
@@ -306,6 +225,28 @@ class KlingAIService {
       logger.error('❌ Cancel task error:', error);
       return { success: false, message: 'Error cancelling task' };
     }
+  }
+
+  /**
+   * Generate mock video response for development/testing
+   */
+  private generateMockVideoResponse(request: VideoGenerationRequest): VideoGenerationResponse {
+    const taskId = `mock-task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    logger.info(`🎭 Generated mock video task: ${taskId}`);
+    logger.info(`🎬 Mock request: ${request.prompt.substring(0, 50)}...`);
+    
+    return {
+      success: true,
+      taskId: taskId,
+      status: 'pending',
+      input: {
+        prompt: request.prompt,
+        duration: request.duration || 5,
+        mode: request.mode || 'std',
+        negative_prompt: request.negativePrompt
+      }
+    };
   }
 }
 

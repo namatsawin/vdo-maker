@@ -53,7 +53,7 @@ services:
       - JWT_EXPIRES_IN=7d
       - GEMINI_API_KEY=AIzaSyBxyzo9bjjDe5dDVbCZjYzJm-8nLS_6tZg
       - GOOGLE_CLOUD_PROJECT_ID=gen-lang-client-0526096964
-      - PIAPI_API_KEY=${PIAPI_API_KEY:-your-piapi-key-here}
+      - PIAPI_API_KEY=1a5c0e39bf8082ad50e537a8c4b664fdf07ded0be244e2b53c9da21b153be4c6
       - PIAPI_BASE_URL=https://api.piapi.ai
       - UPLOAD_DIR=./uploads
       - MAX_FILE_SIZE=50MB

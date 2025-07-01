@@ -83,10 +83,10 @@ export function ScriptSegment({
       const audioAsset: MediaAsset = {
         id: Math.random().toString(36).substr(2, 9),
         url: audioUrl,
-        filename: `segment-${index + 1}-audio.mp3`,
         type: 'audio',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        status: 'completed',
       };
 
       onUpdate(segment.id, {

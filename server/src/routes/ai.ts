@@ -6,6 +6,7 @@ import {
   selectImage,
   getSegmentImages,
   generateVideo,
+  selectVideo,
   getVideoStatus,
   cancelVideoGeneration,
   generateTTS, 
@@ -41,6 +42,7 @@ router.post('/prompt/analyze', analyzeImagePrompt);
 
 // Video generation
 router.post('/video/generate', generateVideo);
+router.post('/video/select/:videoId', selectVideo);
 router.get('/video/status/:taskId', getVideoStatus);
 router.post('/video/cancel/:taskId', cancelVideoGeneration);
 
