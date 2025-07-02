@@ -322,6 +322,7 @@ export const generateVideo = async (req: Request, res: Response, next: NextFunct
       // Create new video and set as selected
       return await tx.video.create({
         data: {
+          url: '', // Placeholder URL, will be updated when video is ready
           prompt,
           duration,
           segmentId,

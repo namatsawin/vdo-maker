@@ -135,6 +135,7 @@ export const mapVideoSegment = (segment: PrismaSegmentWithRelations): VideoSegme
     videoPrompt: segment.videoPrompt,
     status: segment.status as ApprovalStatus,
     duration,
+    result_url: segment.result_url,
     
     // Map media assets
     images: segment.images.map(mapImageAsset),
@@ -166,6 +167,7 @@ export const mapProject = (project: PrismaProjectWithRelations): Project => {
     userId: project.userId,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
+    
   };
 };
 

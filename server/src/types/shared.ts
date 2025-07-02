@@ -64,7 +64,8 @@ export interface VideoSegment {
   videoPrompt: string;
   status: ApprovalStatus;
   duration?: number; // For frontend compatibility
-  
+  result_url?: string | null;
+
   // Media assets
   images: MediaAsset[];
   videos: MediaAsset[];
@@ -94,6 +95,7 @@ export interface Project {
   segments: VideoSegment[];
   createdAt: string;
   updatedAt: string;
+  result_url?: string;
   
   // User relation
   userId: string;

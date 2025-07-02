@@ -78,6 +78,21 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
     }));
   };
 
+  const getSegmentResultUrl = (segment: VideoSegment): string | null => {
+    // Check if segment has a result_url from database
+    if (segment.result_url) {
+      return segment.result_url;
+    }
+    
+    // Fallback to local merged video if available
+    const mergedVideo = mergedVideos.get(segment.id);
+    return mergedVideo?.url || null;
+  };
+
+  const hasSegmentResult = (segment: VideoSegment): boolean => {
+    return !!(segment.result_url || mergedVideos.has(segment.id));
+  };
+
   const getActualDuration = (assetId: string, fallbackDuration?: number): number => {
     return mediaDurations[assetId] || fallbackDuration || 0;
   };
@@ -113,6 +128,9 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
 
     // Reset approval status to draft
     segment.finalApprovalStatus = 'DRAFT';
+    
+    // Clear result_url from segment
+    segment.result_url = undefined;
 
     // Re-expand video and audio sections for re-merging
     setExpandedVideoSections(prev => ({
@@ -145,8 +163,7 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
   };
 
   const handleApproveSegment = (segment: VideoSegment) => {
-    const video = mergedVideos.get(segment.id)
-    if (!video) {
+    if (!hasSegmentResult(segment)) {
       addToast({
         type: 'error',
         title: 'Cannot Approve',
@@ -255,6 +272,7 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
         body: JSON.stringify({
           videoUrl: selectedVideo.url,
           audioUrl: selectedAudio.url,
+          segmentId: segment.id, // Include segment ID for database update
           options: options
         })
       });
@@ -564,7 +582,6 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
                             />
                             <div className="text-xs text-gray-600 grid grid-cols-2 gap-2">
                               <div>Duration: {formatDuration(getActualDuration(selectedVideo.id, selectedVideo.duration))}</div>
-                              <div>Size: {formatFileSize(selectedVideo.size || 0)}</div>
                             </div>
                           </div>
                         ) : (
@@ -626,7 +643,7 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
 
                   {/* Merge Section */}
                   <div className="border-t pt-4">
-                    {mergedVideos.has(segment.id) ? (
+                    {hasSegmentResult(segment) ? (
                       // Show merged result with status-based styling
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -655,7 +672,7 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
                           'bg-blue-50 border border-blue-200'
                         }`}>
                           <video
-                            src={mergedVideos.get(segment.id)?.url}
+                            src={getSegmentResultUrl(segment) || undefined}
                             className="w-full mx-auto max-w-3xl aspect-video object-contain rounded-md mb-2"
                             controls
                             preload="metadata"
@@ -666,7 +683,6 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
                             'text-blue-700'
                           }`}>
                             <div>Duration: {formatDuration(mergedVideos.get(segment.id)?.duration || 0)}</div>
-                            <div>Size: {formatFileSize(mergedVideos.get(segment.id)?.size || 0)}</div>
                             <div>Strategy: {mergedVideos.get(segment.id)?.options.duration}</div>
                           </div>
                           {segment.finalApprovalStatus === 'REJECTED' && (
@@ -846,9 +862,9 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
                         variant="outline"
                         size="sm"
                         onClick={() => handleRejectSegment(segment)}
-                        disabled={!mergedVideos.has(segment.id)}
+                        disabled={!hasSegmentResult(segment)}
                         className={`text-red-600 border-red-200 hover:bg-red-50 min-w-[100px] ${
-                          !mergedVideos.has(segment.id) ? 'opacity-50 cursor-not-allowed' : ''
+                          !hasSegmentResult(segment) ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
                         {segment.finalApprovalStatus === 'REJECTED' ? 'Rejected' : 'Reject'}
@@ -856,9 +872,9 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
                       <Button
                         size="sm"
                         onClick={() => handleApproveSegment(segment)}
-                        disabled={!mergedVideos.has(segment.id)}
+                        disabled={!hasSegmentResult(segment)}
                         className={`bg-green-500 hover:bg-green-600 text-white min-w-[100px] ${
-                          !mergedVideos.has(segment.id) ? 'opacity-50 cursor-not-allowed' : ''
+                          !hasSegmentResult(segment) ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
                         Approve

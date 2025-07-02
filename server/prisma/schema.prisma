@@ -62,6 +62,7 @@ model Segment {
   videoApprovalStatus  String   @default("DRAFT")
   audioApprovalStatus  String   @default("DRAFT")
   finalApprovalStatus  String   @default("DRAFT")
+  result_url           String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   projectId            String
@@ -89,15 +90,15 @@ model Image {
 
 model Video {
   id         String   @id @default(cuid())
-  url        String?
-  prompt     String   @db.Text
+  url        String
+  prompt     String
   duration   Int?
-  metadata   String?  @db.Text
+  metadata   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   segmentId  String
-  taskId     String
-  status     String
+  taskId     String?
+  status     String   @default("DRAFT")
   isSelected Boolean  @default(false)
   segment    Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
 

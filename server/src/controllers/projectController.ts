@@ -1,12 +1,10 @@
 import { Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database';
 import { createError } from '../middleware/errorHandler';
 import { AuthenticatedRequest, CreateProjectRequest, UpdateProjectRequest, UpdateSegmentRequest, ProjectStatus, WorkflowStage, ApiResponse } from '../types';
 import { mapProject, mapVideoSegment, calculateCurrentStage, calculateProjectStatus } from '../utils/typeMappers';
 import { generateScript } from './aiController';
 import { geminiService } from '@/services/geminiService';
-
-const prisma = new PrismaClient();
 
 // Get all projects for authenticated user
 export const getProjects = async (req: AuthenticatedRequest, res: Response): Promise<void> => {

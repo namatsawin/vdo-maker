@@ -1,18 +1,20 @@
 import { Request, Response } from 'express';
 import { ffmpegService, MergeOptions } from '../services/ffmpegService';
+import { prisma } from '../config/database';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface MergeRequest {
   videoUrl: string;
   audioUrl: string;
+  segmentId?: string; // Optional segment ID to update result_url
   options: MergeOptions;
 }
 
 export class MergeController {
   public async mergeVideoAudio(req: Request, res: Response): Promise<void> {
     try {
-      const { videoUrl, audioUrl, options }: MergeRequest = req.body;
+      const { videoUrl, audioUrl, segmentId, options }: MergeRequest = req.body;
 
       // Validate input
       if (!videoUrl || !audioUrl) {
@@ -58,6 +60,14 @@ export class MergeController {
         // Generate public URL for the merged video
         const filename = path.basename(result.outputPath);
         const publicUrl = ffmpegService.getOutputUrl(filename);
+
+        // Update segment with result_url if segmentId is provided
+        if (segmentId) {
+          await prisma.segment.update({
+            where: { id: segmentId },
+            data: { result_url: publicUrl }
+          });
+        }
 
         // Cleanup temporary files
         await ffmpegService.cleanupFile(videoPath);
