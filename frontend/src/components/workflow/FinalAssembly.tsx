@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useUIStore } from '@/stores/uiStore';
 import { API_ENDPOINTS } from '@/config/api';
+import { MergeAllSegmentsButton } from './MergeAllSegmentsButton';
 import type { VideoSegment, MediaAsset } from '@/types';
+import { ApprovalStatus } from '@/types/approvalStatus';
 
 interface MergeOptions {
   duration: 'shortest' | 'longest' | 'video' | 'audio';
@@ -28,9 +30,10 @@ interface FinalAssemblyProps {
   segments: VideoSegment[];
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
+  onUpdate: (segmentId: string, updates: Partial<VideoSegment>) => void;
 }
 
-export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyProps) {
+export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: FinalAssemblyProps) {
   const [mediaDurations, setMediaDurations] = useState<Record<string, number>>({});
   const [mergingSegments, setMergingSegments] = useState<Set<string>>(new Set());
   const [mergedVideos, setMergedVideos] = useState<Map<string, MergedVideo>>(new Map());
@@ -119,18 +122,18 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
   };
 
   const handleResetSegment = (segment: VideoSegment) => {
-    // Remove merged video
+    // Remove merged video from local state
     setMergedVideos(prev => {
       const newMap = new Map(prev);
       newMap.delete(segment.id);
       return newMap;
     });
 
-    // Reset approval status to draft
-    segment.finalApprovalStatus = 'DRAFT';
-    
-    // Clear result_url from segment
-    segment.result_url = undefined;
+    // Update segment through proper update mechanism
+    onUpdate(segment.id, {
+      finalApprovalStatus: ApprovalStatus.DRAFT,
+      result_url: null, // This will properly remove the result_url from the segment
+    });
 
     // Re-expand video and audio sections for re-merging
     setExpandedVideoSections(prev => ({
@@ -243,6 +246,20 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
         ...prev[segmentId],
         [key]: value
       }
+    }));
+  };
+
+  const handleMergeComplete = (segmentId: string, mergedVideo: MergedVideo) => {
+    setMergedVideos(prev => new Map(prev).set(segmentId, mergedVideo));
+
+    // Collapse video and audio sections after successful merge
+    setExpandedVideoSections(prev => ({
+      ...prev,
+      [segmentId]: false
+    }));
+    setExpandedAudioSections(prev => ({
+      ...prev,
+      [segmentId]: false
     }));
   };
 
@@ -385,6 +402,13 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
       </CardHeader>
       
       <CardContent className="space-y-6">
+        {/* Merge All Segments Button */}
+        <MergeAllSegmentsButton 
+          segments={segments}
+          onMergeComplete={handleMergeComplete}
+          mergedVideos={mergedVideos}
+        />
+
         {/* Segment Overview */}
         <div className="space-y-4">
           <h4 className="font-medium text-sm text-gray-700">Segments Overview:</h4>

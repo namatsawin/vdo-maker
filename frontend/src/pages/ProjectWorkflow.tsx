@@ -33,7 +33,7 @@ export function ProjectWorkflow() {
   const [searchParams, setSearchParams] = useSearchParams();
   const stage = searchParams.get('stage') || 'script';
   
-  const { currentProject: project, updateProject, loadProject } = useProjectStore();
+  const { currentProject: project, updateProject, loadProject, updateSegment } = useProjectStore();
   const { addToast } = useUIStore();
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -117,17 +117,7 @@ export function ProjectWorkflow() {
 
   const handleSegmentUpdate = (segmentId: string, updates: Partial<VideoSegment>) => {
     if (!project) return;
-
-    const updatedSegments = project.segments.map(segment =>
-      segment.id === segmentId
-        ? { ...segment, ...updates, updatedAt: new Date().toISOString() }
-        : segment
-    );
-
-    updateProject(project.id, {
-      segments: updatedSegments,
-      updatedAt: new Date().toISOString(),
-    });
+    return updateSegment(project.id, segmentId, updates)
   };
 
   const getApprovalField = (currentStage: string) => {
@@ -452,6 +442,7 @@ export function ProjectWorkflow() {
               segments={project.segments}
               onApprove={handleApprove}
               onReject={handleReject}
+              onUpdate={handleSegmentUpdate}
             />
           ) : (
             <>

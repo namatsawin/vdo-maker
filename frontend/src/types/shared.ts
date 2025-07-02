@@ -97,7 +97,7 @@ export interface VideoSegment {
   videoPrompt: string;
   status: ApprovalStatus;
   duration?: number; // For frontend compatibility
-  result_url?: string; // URL to the final merged video result
+  result_url?: string | null; // URL to the final merged video result
   
   // Media assets
   images: MediaAsset[];
