@@ -660,8 +660,7 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                             variant="ghost"
                             size="sm"
                             onClick={() => handleResetSegment(segment)}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1"
-                            title="Reset segment - Delete merged video and start over"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1 hover:cursor-pointer"
                           >
                             <RotateCcw className="h-3 w-3" />
                             Reset
@@ -703,10 +702,9 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
-                              variant="outline"
                               size="sm"
                               onClick={() => toggleMergeOptions(segment.id)}
-                              className="flex items-center gap-1"
+                              className="flex items-center gap-1 hover:cursor-pointer hover:bg-gray-100"
                             >
                               <Settings className="h-3 w-3" />
                               Options
@@ -715,7 +713,7 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                               onClick={() => handleMergeSegment(segment)}
                               disabled={!selectedVideo || !selectedAudio || mergingSegments.has(segment.id)}
                               size="sm"
-                              className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600"
+                              className="flex items-center gap-2 hover:cursor-pointer hover:bg-gray-100"
                             >
                               {mergingSegments.has(segment.id) ? (
                                 <>
@@ -869,6 +867,7 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                         size="sm"
                         onClick={() => handleApproveSegment(segment)}
                         className="bg-green-500 hover:bg-green-600 text-white min-w-[100px]"
+                        disabled={!mergingSegments.has(segment.id)}
                       >
                         Approve
                       </Button>
