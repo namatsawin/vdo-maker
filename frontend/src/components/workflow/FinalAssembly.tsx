@@ -476,18 +476,16 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                       {/* Status indicators in collapsed view */}
                       {!expandedSegments[segment.id] && (
                         <div className="flex items-center gap-2 text-xs text-gray-500">
-                          {mergedVideos.has(segment.id) && (
-                            <span className={`flex items-center gap-1 ${
-                              segment.finalApprovalStatus === 'APPROVED' ? 'text-green-600' :
-                              segment.finalApprovalStatus === 'REJECTED' ? 'text-red-600' :
-                              'text-blue-600'
-                            }`}>
-                              <Check className="h-3 w-3" />
-                              {segment.finalApprovalStatus === 'APPROVED' ? 'Approved' :
-                               segment.finalApprovalStatus === 'REJECTED' ? 'Rejected' :
-                               'Merged'}
-                            </span>
-                          )}
+                          <span className={`flex items-center gap-1 ${
+                            segment.finalApprovalStatus === 'APPROVED' ? 'text-green-600' :
+                            segment.finalApprovalStatus === 'REJECTED' ? 'text-red-600' :
+                            'text-blue-600'
+                          }`}>
+                            <Check className="h-3 w-3" />
+                            {segment.finalApprovalStatus === 'APPROVED' ? 'Approved' :
+                              segment.finalApprovalStatus === 'REJECTED' ? 'Rejected' :
+                              'Merged'}
+                          </span>
                         </div>
                       )}
                       <Button
@@ -867,7 +865,6 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                         size="sm"
                         onClick={() => handleApproveSegment(segment)}
                         className="bg-green-500 hover:bg-green-600 text-white min-w-[100px]"
-                        disabled={!mergingSegments.has(segment.id)}
                       >
                         Approve
                       </Button>
