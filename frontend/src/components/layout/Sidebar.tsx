@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FolderOpen } from 'lucide-react';
+import { Home, FolderOpen, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Projects', href: '/projects', icon: FolderOpen },
+  { name: 'System Instructions', href: '/system-instructions', icon: Settings },
 ];
 
 export function Sidebar() {

@@ -207,7 +207,7 @@ class ApiClient {
     return this.request(`/ai/video/status/${taskId}`);
   }
 
-  async generateTTS(text: string, voice: string = 'default', model?: string): Promise<ApiResponse<{
+  async generateTTS(text: string, voice?:string , model?: string): Promise<ApiResponse<{
     audioUrl: string;
     text: string;
     voice: string;

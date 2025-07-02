@@ -48,11 +48,13 @@ class ProjectService {
   }
 
   // Generate audio for segment
-  async generateSegmentAudio(projectId: string, segmentId: string, voice?: string, model?: string): Promise<{ segment: VideoSegment; audioUrl: string }> {
+  async generateSegmentAudio(projectId: string, segmentId: string, text: string, voice?: string, model?: string): Promise<{ segment: VideoSegment; audioUrl: string }> {
     const response = await apiClient.post(`/projects/${projectId}/segments/${segmentId}/audio`, {
-      voice: voice || 'default',
-      model: model || 'gemini-2.5-flash'
+      text,
+      voice,
+      model,
     });
+    
     if (!response.success) {
       throw new Error(response.error?.message || 'Failed to generate audio');
     }

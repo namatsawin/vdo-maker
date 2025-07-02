@@ -6,6 +6,7 @@ import { Dashboard } from '@/pages/Dashboard';
 import { ProjectCreate } from '@/pages/ProjectCreate';
 import { ProjectWorkflow } from '@/pages/ProjectWorkflow';
 import { ProjectList } from '@/pages/ProjectList';
+import { SystemInstructions } from '@/pages/SystemInstructions';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/create" element={<ProjectCreate />} />
             <Route path="/projects/:id/workflow" element={<ProjectWorkflow />} />
+            <Route path="/system-instructions" element={<SystemInstructions />} />
           </Routes>
         </Layout>
         <ToastContainer />

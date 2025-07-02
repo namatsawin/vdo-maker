@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Check, X, RotateCcw, Download, Loader2, Video, BrushCleaning, Wand2, Clock, Eye } from 'lucide-react';
+import { Check, X, RotateCcw, Download, Loader2, Video, BrushCleaning, Wand2, Clock, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
@@ -9,7 +10,6 @@ import { PromptAdvisor } from './PromptAdvisor';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAIStore } from '@/stores/aiStore';
-import { ApprovalStatus } from '@/types'
 import type { VideoSegment, MediaAsset, ApprovalStatus as IApprovalStatus, MediaStatus } from '@/types';
 import { convertToLegacyApprovalStatus, isApprovalStatus } from '@/utils/typeCompatibility';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,7 @@ export function VideoApproval({
   const [selectedMode, setSelectedMode] = useState<string>('std');
   const [showPromptAdvisor, setShowPromptAdvisor] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   const { generateSegmentVideo, selectSegmentVideo, currentProject, loadProject } = useProjectStore();
   const { addToast } = useUIStore();
@@ -91,6 +92,73 @@ export function VideoApproval({
 
   const currentStatus = segment.videoApprovalStatus;
   const isApproved = isApprovalStatus(currentStatus, 'approved');
+
+  // Auto-collapse when approved
+  useEffect(() => {
+    if (isApproved) setIsCollapsed(true)
+  }, [isApproved])
+
+  const approve = (segmentId: string) => {
+    onApprove(segmentId)
+    setIsCollapsed(true)
+  }
+
+  const reject = (segmentId: string) => {
+    onReject(segmentId)
+  }
+
+  // Create collapsed summary content
+  const getCollapsedSummary = () => {
+    if (!hasVideo) {
+      return (
+        <div className="flex items-center gap-3 text-sm text-gray-600">
+          <Video className="h-4 w-4" />
+          <span>No video generated yet</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <video
+            src={selectedVideo?.url}
+            className="w-16 h-10 object-cover rounded border"
+            muted
+            poster={selectedImage?.url}
+          />
+          <div className="text-sm">
+            <div className="font-medium text-gray-900">
+              {selectedVideo?.duration || selectedDuration}s • {selectedMode.toUpperCase()}
+            </div>
+            <div className="text-gray-500 text-xs">
+              {availableVideos.length > 1 ? `${availableVideos.length} versions` : '1 version'}
+            </div>
+          </div>
+        </div>
+        {isApproved && (
+          <div className="flex items-center gap-2 text-green-600">
+            <Check className="h-4 w-4" />
+            <span className="text-sm font-medium">Approved</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const getStatusBadge = (status: IApprovalStatus) => {
+    const legacyStatus = convertToLegacyApprovalStatus(status);
+    switch (legacyStatus) {
+      case 'approved':
+        return <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">Approved</span>;
+      case 'rejected':
+        return <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">Rejected</span>;
+      case 'pending':
+        return <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">Pending Review</span>;
+      default:
+        return <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">Draft</span>;
+    }
+  };
 
   // Initialize video prompt from segment
   useEffect(() => {
@@ -253,19 +321,6 @@ export function VideoApproval({
     document.body.removeChild(link);
   };
 
-  const getStatusColor = (status: IApprovalStatus) => {
-    switch (status) {
-      case ApprovalStatus.APPROVED:
-        return 'text-green-600 bg-green-50 border-green-200';
-      case ApprovalStatus.REJECTED:
-        return 'text-red-600 bg-red-50 border-red-200';
-      case ApprovalStatus.PROCESSING:
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
   const getVideoStatus = (video: MediaAsset) => {
     return video.status
   };
@@ -276,42 +331,74 @@ export function VideoApproval({
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 text-purple-500" />
-            Segment {index + 1} - Video Generation
-          </CardTitle>
-          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(segment.videoApprovalStatus || 'DRAFT')}`}>
-            {convertToLegacyApprovalStatus(segment.videoApprovalStatus || 'DRAFT')}
+    <Card className={`w-full ${isApproved ? 'border-green-200 bg-green-50' : ''}`}>
+      <Collapsible
+        open={!isCollapsed}
+        onOpenChange={(open) => setIsCollapsed(!open)}
+        className='px-4'
+        trigger={
+          <CollapsibleTrigger>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Video className="h-5 w-5 text-purple-500" />
+                  Segment {index + 1} - Video Generation
+                  {isApproved && <Lock className="h-4 w-4 text-green-600" />}
+                </CardTitle>
+                {getStatusBadge(segment.videoApprovalStatus || 'DRAFT')}
+              </div>
+              {isCollapsed && (
+                <div className="mt-3">
+                  {getCollapsedSummary()}
+                </div>
+              )}
+            </CardHeader>
+          </CollapsibleTrigger>
+        }
+      >
+        <CollapsibleContent>
+          <CardContent className="space-y-6 pt-0">
+        {/* Approval Lock Notice */}
+        {isApproved && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+            <Lock className="h-4 w-4 text-green-600" />
+            <span className="text-sm text-green-700 font-medium">
+              This segment is approved and cannot be edited
+            </span>
           </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
+        )}
         {/* Video Generation Controls */}
         <div className="space-y-4">
           {/* Video Prompt */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-medium text-gray-700">Video Prompt:</Label>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowPromptAdvisor(true)}
-                className="text-xs"
-              >
-                <BrushCleaning className="h-3 w-3 mr-1" />
-                Improve Prompt
-              </Button>
+              {!isApproved && (
+                 <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPromptAdvisor(true)}
+                  className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 cursor-pointer"
+                  disabled={!videoPrompt.length}
+                >
+                  <BrushCleaning className="h-4 w-4" />
+                  Sanitize Prompt
+                </Button>
+              )}
+              {isApproved && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Lock className="h-3 w-3" />
+                  Settings Locked
+                </div>
+              )}
             </div>
             <Textarea
               value={videoPrompt}
               onChange={(e) => setVideoPrompt(e.target.value)}
               placeholder="Describe the video you want to generate..."
-              className="min-h-[100px] resize-none"
-              disabled={isGenerating}
+              className={`min-h-[100px] resize-none ${isApproved ? 'cursor-not-allowed opacity-60' : ''}`}
+              disabled={isGenerating || isApproved}
+              readOnly={isApproved}
             />
           </div>
 
@@ -326,8 +413,9 @@ export function VideoApproval({
               <Select
                 value={selectedDuration.toString()}
                 onValueChange={(value) => setSelectedDuration(parseInt(value))}
+                disabled={isApproved}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className={`w-full ${isApproved ? 'cursor-not-allowed opacity-60' : ''}`}>
                   <SelectValue placeholder="Select duration" />
                 </SelectTrigger>
                 <SelectContent className='bg-white'>
@@ -352,8 +440,9 @@ export function VideoApproval({
               <Select
                 value={selectedMode}
                 onValueChange={setSelectedMode}
+                disabled={isApproved}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className={`w-full ${isApproved ? 'cursor-not-allowed opacity-60' : ''}`}>
                   <SelectValue placeholder="Select mode" />
                 </SelectTrigger>
                 <SelectContent className='bg-white'>
@@ -377,9 +466,10 @@ export function VideoApproval({
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
               placeholder="Describe what you don't want in the video..."
-              className="resize-none text-sm"
+              className={`resize-none text-sm ${isApproved ? 'cursor-not-allowed opacity-60' : ''}`}
               rows={3}
-              disabled={isGenerating}
+              disabled={isGenerating || isApproved}
+              readOnly={isApproved}
             />
           </div>
 
@@ -473,8 +563,9 @@ export function VideoApproval({
             <Select
               value={selectedVideo?.id || ''}
               onValueChange={handleVideoSelect}
+              disabled={isApproved}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className={`w-full ${isApproved ? 'cursor-not-allowed opacity-60' : ''}`}>
                 <SelectValue placeholder="Select a video" />
               </SelectTrigger>
               <SelectContent className='bg-white'>
@@ -508,8 +599,8 @@ export function VideoApproval({
             <Button 
               onClick={generateVideo} 
               variant="ghost"
-              className="flex items-center gap-2 mx-auto cursor-pointer hover:bg-gray-50"
-              disabled={!videoPrompt.trim() || !selectedImage || isGenerating}
+              className={`flex items-center gap-2 mx-auto cursor-pointer hover:bg-gray-50 ${isApproved ? 'cursor-not-allowed opacity-50' : ''}`}
+              disabled={!videoPrompt.trim() || !selectedImage || isGenerating || isApproved}
             >
               {isGenerating ? 
                 <>Loading...<Loader2 className="h-6 w-6 animate-spin" /></> : 
@@ -530,9 +621,9 @@ export function VideoApproval({
           <div className="flex items-center gap-3">
             <Button
               onClick={handleRegenerate}
-              disabled={isGenerating}
+              disabled={isGenerating || isApproved}
               variant="outline"
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${isApproved ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -545,14 +636,14 @@ export function VideoApproval({
             <div className="flex items-center gap-3 ml-auto">
               <Button
                 variant="outline"
-                onClick={() => onReject(segment.id)}
+                onClick={() => reject(segment.id)}
                 className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 <X className="h-4 w-4" />
                 Reject
               </Button>
               <Button
-                onClick={() => onApprove(segment.id)}
+                onClick={() => approve(segment.id)}
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                 disabled={selectedVideo.status !== 'completed'}
               >
@@ -576,6 +667,8 @@ export function VideoApproval({
           </div>
         )}
       </CardContent>
+      </CollapsibleContent>
+      </Collapsible>
 
       <PromptAdvisor
         currentPrompt={videoPrompt}

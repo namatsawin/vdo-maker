@@ -390,10 +390,14 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
   try {
     const userId = req.user?.id;
     const { projectId, segmentId } = req.params;
-    const { voice = 'default', model = 'gemini-2.5-flash' } = req.body;
+    const { text, voice, model } = req.body;
 
     if (!userId) {
       throw createError('User not authenticated', 401);
+    }
+
+    if (!text) {
+      throw createError('Text is required', 400);
     }
 
     // Verify project ownership
@@ -432,7 +436,7 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
       const aiRequest = {
         user: req.user,
         body: {
-          text: segment.script,
+          text,
           voice,
           model
         }
@@ -469,7 +473,6 @@ export const generateSegmentAudio = async (req: AuthenticatedRequest, res: Respo
           metadata: JSON.stringify({
             model,
             voice,
-            generatedAt: new Date().toISOString(),
             duration: audioResult.data.duration || null // Store duration in metadata instead
           }),
           segmentId: segment.id

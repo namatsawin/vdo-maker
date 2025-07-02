@@ -264,10 +264,8 @@ export function ImageApproval({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowPromptAdvisor(true)}
-                className={`flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 ${
-                  imagePrompt.length < 15 ? 'animate-pulse bg-purple-50' : ''
-                }`}
-                title="Get AI suggestions to improve your prompt"
+                className='flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50'
+                disabled={!imagePrompt.length}
               >
                 <BrushCleaning className="h-4 w-4" />
                 Sanitize Prompt

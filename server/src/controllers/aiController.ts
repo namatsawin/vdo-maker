@@ -425,7 +425,8 @@ export const cancelVideoGeneration = async (req: Request, res: Response, next: N
 
 export const generateTTS = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { text, voice = 'default', model = GeminiTTSModel.FLASH } = req.body;
+    const { text, voice, model } = req.body;
+
 
     if (!text) {
       throw createError('Text is required', 400);

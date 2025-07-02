@@ -236,13 +236,6 @@ class GeminiService {
       
     } catch (error) {
       logger.error('Gemini TTS generation failed:', error);
-      
-      // Fallback to mock audio for development
-      if (process.env.NODE_ENV === 'development') {
-        logger.warn('Falling back to mock audio for development');
-        return this.generateMockAudio(text, voice);
-      }
-      
       throw error;
     }
   }
@@ -281,38 +274,6 @@ class GeminiService {
     };
 
     return voiceMap[voice.toLowerCase()] || 'Kore';
-  }
-
-  private async generateMockAudio(text: string, voice: string): Promise<string> {
-    // Generate a mock audio file for development/testing
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substr(2, 9);
-    const filename = `mock-gemini-tts-${timestamp}-${randomId}.wav`;
-    const uploadsDir = process.env.UPLOAD_DIR || './uploads';
-    const filePath = path.join(uploadsDir, filename);
-
-    // Ensure uploads directory exists
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    // Create silent PCM data (1 second at 24kHz, 16-bit, mono)
-    const sampleRate = 24000;
-    const duration = 1; // 1 second
-    const samples = sampleRate * duration;
-    const silentPcmData = Buffer.alloc(samples * 2); // 16-bit = 2 bytes per sample
-
-    // Use the proper WAV file creation
-    await this.saveWaveFile(filePath, silentPcmData);
-
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
-    const audioUrl = `${backendUrl}/uploads/${filename}`;
-    logger.info(`Mock Gemini TTS generation completed: ${audioUrl} (text: "${text.substring(0, 50)}...", voice: ${voice})`);
-    
-    return audioUrl;
   }
 
   async testConnection(model?: GeminiModel): Promise<{ status: string; model: string }> {

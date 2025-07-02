@@ -323,7 +323,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
     }
   },
 
-  generateSegmentAudio: async (segmentId: string, _text: string, voice: string = 'default', model?: string) => {
+  generateSegmentAudio: async (segmentId: string, text: string, voice: string = 'default', model?: string) => {
     set({ isLoading: true, error: null });
 
     try {
@@ -341,6 +341,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>()((set, get
       const result = await projectService.generateSegmentAudio(
         currentProject.id, 
         segmentId, 
+        text,
         voice, 
         model
       );
