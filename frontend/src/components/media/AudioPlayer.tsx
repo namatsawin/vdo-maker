@@ -96,7 +96,8 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    const millisecs = Math.floor((seconds % 1) * 100);
+    return `${mins}:${secs.toString().padStart(2, '0')}.${millisecs.toString().padStart(2, '0')}`;
   };
 
   const handleDownload = () => {
@@ -210,6 +211,7 @@ export function AudioPlayer({ audio, className, compact = false }: AudioPlayerPr
         <span className="text-sm text-muted-foreground">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
+
       </div>
     </div>
   );

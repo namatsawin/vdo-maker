@@ -123,9 +123,8 @@ export function VideoApproval({
         <div className="flex items-center gap-2">
           <video
             src={selectedVideo?.url}
-            className="w-16 h-10 object-contain rounded border"
+            className="w-16 h-10 object-contain bg-black rounded border"
             muted
-            poster={selectedImage?.url}
           />
           <div className="text-sm">
             <div className="font-medium text-gray-900">
@@ -522,9 +521,8 @@ export function VideoApproval({
                 <div className="relative mb-3 border-b pb-6">
                   <video
                     src={selectedVideo.url}
-                    className="w-full mx-auto max-w-3xl aspect-video object-contain rounded-md bg-gray-100"
+                    className="w-full mx-auto max-w-3xl bg-black aspect-video object-contain rounded-md"
                     controls
-                    poster={selectedImage?.url} // Use first frame as poster
                   />
                 </div>
 

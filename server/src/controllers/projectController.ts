@@ -224,7 +224,7 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response): P
     const { segments, ...projectUpdates } = updates;
 
     // Update project fields only (exclude segments from direct update)
-    const allowedProjectFields = ['title', 'description', 'status', 'currentStage'];
+    const allowedProjectFields = ['title', 'description', 'status', 'currentStage', 'final_video_url'];
     const filteredProjectUpdates = Object.keys(projectUpdates)
       .filter(key => allowedProjectFields.includes(key))
       .reduce((obj, key) => {

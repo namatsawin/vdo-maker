@@ -123,6 +123,7 @@ export interface Project {
   status: ProjectStatus;
   currentStage: WorkflowStage;
   segments: VideoSegment[];
+  final_video_url?: string | null; // URL to the final concatenated video
   createdAt: string;
   updatedAt: string;
   
@@ -167,6 +168,7 @@ export interface UpdateSegmentRequest {
   videoApprovalStatus?: ApprovalStatus;
   audioApprovalStatus?: ApprovalStatus;
   finalApprovalStatus?: ApprovalStatus;
+  result_url?: string | null;
 }
 
 // AI Service types

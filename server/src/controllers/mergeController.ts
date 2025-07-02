@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ffmpegService, MergeOptions } from '../services/ffmpegService';
+import { ffmpegService, MergeOptions, ConcatenateOptions } from '../services/ffmpegService';
 import { prisma } from '../config/database';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,6 +9,12 @@ export interface MergeRequest {
   audioUrl: string;
   segmentId?: string; // Optional segment ID to update result_url
   options: MergeOptions;
+}
+
+export interface ConcatenateRequest {
+  projectId: string;
+  segmentUrls: string[]; // Array of segment result URLs in order
+  options: ConcatenateOptions;
 }
 
 export class MergeController {
@@ -102,6 +108,107 @@ export class MergeController {
         error: {
           message: error.message || 'Failed to merge video and audio',
           code: 'MERGE_FAILED'
+        }
+      });
+    }
+  }
+
+  public async concatenateSegments(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId, segmentUrls, options }: ConcatenateRequest = req.body;
+
+      // Validate input
+      if (!projectId || !segmentUrls || !Array.isArray(segmentUrls) || segmentUrls.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: {
+            message: 'projectId and segmentUrls array are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
+        });
+        return;
+      }
+
+      // Validate options
+      const concatenateOptions: ConcatenateOptions = {
+        videoCodec: options?.videoCodec || 'copy',
+        audioCodec: options?.audioCodec || 'copy',
+        resolution: options?.resolution,
+        frameRate: options?.frameRate,
+        addTransitions: options?.addTransitions || false,
+        transitionDuration: options?.transitionDuration || 0.5
+      };
+
+      // Create temporary directory for downloads
+      const tempDir = path.join(process.cwd(), 'temp', uuidv4());
+      await require('fs/promises').mkdir(tempDir, { recursive: true });
+
+      try {
+        // Download all segment videos
+        const downloadedPaths: string[] = [];
+        
+        for (let i = 0; i < segmentUrls.length; i++) {
+          const segmentUrl = segmentUrls[i];
+          const segmentPath = path.join(tempDir, `segment_${i + 1}.mp4`);
+          
+          console.log(`Downloading segment ${i + 1} from:`, segmentUrl);
+          await ffmpegService.downloadFile(segmentUrl, segmentPath);
+          downloadedPaths.push(segmentPath);
+        }
+
+        // Concatenate all segments
+        console.log('Starting FFmpeg concatenation with options:', concatenateOptions);
+        const result = await ffmpegService.concatenateVideos(downloadedPaths, concatenateOptions);
+
+        // Generate public URL for the concatenated video
+        const filename = path.basename(result.outputPath);
+        const publicUrl = ffmpegService.getOutputUrl(filename);
+
+        // Update project with final video URL
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { 
+            final_video_url: publicUrl,
+            status: 'COMPLETED',
+            updatedAt: new Date()
+          }
+        });
+
+        // Cleanup temporary files
+        for (const filePath of downloadedPaths) {
+          await ffmpegService.cleanupFile(filePath);
+        }
+        await require('fs/promises').rmdir(tempDir);
+
+        res.json({
+          success: true,
+          data: {
+            concatenatedVideoUrl: publicUrl,
+            duration: result.duration,
+            size: result.size,
+            processingTime: result.processingTime,
+            segmentCount: result.segmentCount,
+            options: concatenateOptions
+          }
+        });
+
+      } catch (processingError) {
+        // Cleanup on error
+        try {
+          await require('fs/promises').rm(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup temp directory:', cleanupError);
+        }
+        throw processingError;
+      }
+
+    } catch (error: any) {
+      console.error('Concatenation error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: error.message || 'Failed to concatenate video segments',
+          code: 'CONCATENATION_FAILED'
         }
       });
     }

@@ -22,14 +22,11 @@ RUN npx prisma generate
 # Copy the rest of the source code
 COPY . .
 
-# Regenerate Prisma client to ensure it's using the latest schema
-RUN npx prisma generate
-
 # Create necessary directories
 RUN mkdir -p uploads logs uploads/merged temp
 
 # Expose port
 EXPOSE 3001
 
-# Start the application
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run dev"]
+# Start the application with Prisma client regeneration
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npm run dev"]

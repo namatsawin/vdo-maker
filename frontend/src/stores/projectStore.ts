@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, VideoSegment } from '@/types';
+import type { Project, VideoSegment, UpdateSegmentRequest } from '@/types';
 import { ApprovalStatus } from '@/types/shared';
 import { projectService } from '@/services/projectService';
 import { useAIStore } from './aiStore';
@@ -18,7 +18,7 @@ interface ProjectActions {
   createProject: (data: { title: string; description?: string; story?: string }) => Promise<Project>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
-  updateSegment: (projectId: string, segmentId: string, updates: any) => Promise<void>;
+  updateSegment: (projectId: string, segmentId: string, updates: UpdateSegmentRequest) => Promise<void>;
   
   // Local state management
   setProjects: (projects: Project[]) => void;

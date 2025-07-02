@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/SimpleSelect';
 import { AudioPlayer } from '@/components/media/AudioPlayer';
-import type { VideoSegment, ApprovalStatus, MediaAsset } from '@/types';
+import type { VideoSegment, ApprovalStatus } from '@/types';
 import { isApprovalStatus, convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -77,21 +77,8 @@ export function ScriptSegment({
 
     setIsGeneratingAudio(true);
     try {
-      const audioUrl = await generateSegmentAudio(segment.id, segment.script, selectedVoice);
-      
-      // Create audio asset
-      const audioAsset: MediaAsset = {
-        id: Math.random().toString(36).substr(2, 9),
-        url: audioUrl,
-        type: 'audio',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: 'completed',
-      };
-
-      onUpdate(segment.id, {
-        audios: [audioAsset],
-      });
+      // generateSegmentAudio already handles creating the audio and updating the segment
+      await generateSegmentAudio(segment.id, segment.script, selectedVoice);
 
       addToast({
         type: 'success',

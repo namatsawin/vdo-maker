@@ -12,11 +12,28 @@ export interface MergeOptions {
   audioCodec: 'copy' | 'aac' | 'mp3';
 }
 
+export interface ConcatenateOptions {
+  videoCodec: 'copy' | 'h264' | 'h265';
+  audioCodec: 'copy' | 'aac' | 'mp3';
+  resolution?: string; // e.g., '1920x1080'
+  frameRate?: number; // e.g., 30
+  addTransitions?: boolean;
+  transitionDuration?: number; // seconds
+}
+
 export interface MergeResult {
   outputPath: string;
   duration: number;
   size: number;
   processingTime: number;
+}
+
+export interface ConcatenateResult {
+  outputPath: string;
+  duration: number;
+  size: number;
+  processingTime: number;
+  segmentCount: number;
 }
 
 export class FFmpegService {
@@ -213,6 +230,167 @@ export class FFmpegService {
         })
         .run();
     });
+  }
+
+  public async concatenateVideos(
+    videoPaths: string[],
+    options: ConcatenateOptions
+  ): Promise<ConcatenateResult> {
+    const startTime = Date.now();
+    const outputFilename = `concatenated_${uuidv4()}.mp4`;
+    const outputPath = path.join(this.outputDir, outputFilename);
+
+    console.log('Concatenation operation starting:');
+    console.log('- Video paths:', videoPaths);
+    console.log('- Output path:', outputPath);
+    console.log('- Options:', options);
+
+    // Ensure output directory exists
+    await this.ensureOutputDir();
+
+    // Verify all input files exist
+    for (const videoPath of videoPaths) {
+      try {
+        await fs.access(videoPath);
+        console.log(`✓ Video file exists: ${videoPath}`);
+      } catch (error) {
+        throw new Error(`Video file not found: ${videoPath}`);
+      }
+    }
+
+    // Create a temporary file list for FFmpeg concat demuxer
+    const tempDir = path.join(process.cwd(), 'temp', uuidv4());
+    await fs.mkdir(tempDir, { recursive: true });
+    const fileListPath = path.join(tempDir, 'filelist.txt');
+
+    try {
+      // Create file list content
+      const fileListContent = videoPaths
+        .map(videoPath => `file '${videoPath.replace(/'/g, "'\\''")}'`)
+        .join('\n');
+      
+      await fs.writeFile(fileListPath, fileListContent);
+      console.log('Created file list:', fileListPath);
+      console.log('File list content:', fileListContent);
+
+      return new Promise((resolve, reject) => {
+        let command = ffmpeg()
+          .input(fileListPath)
+          .inputOptions('-f', 'concat')
+          .inputOptions('-safe', '0');
+
+        // Apply video codec
+        switch (options.videoCodec) {
+          case 'copy':
+            command = command.videoCodec('copy');
+            break;
+          case 'h264':
+            command = command.videoCodec('libx264')
+                            .outputOptions('-preset', 'medium')
+                            .outputOptions('-crf', '23');
+            break;
+          case 'h265':
+            command = command.videoCodec('libx265')
+                            .outputOptions('-preset', 'medium')
+                            .outputOptions('-crf', '28');
+            break;
+        }
+
+        // Apply audio codec
+        switch (options.audioCodec) {
+          case 'copy':
+            command = command.audioCodec('copy');
+            break;
+          case 'aac':
+            command = command.audioCodec('aac')
+                            .audioBitrate('128k');
+            break;
+          case 'mp3':
+            command = command.audioCodec('libmp3lame')
+                            .audioBitrate('128k');
+            break;
+        }
+
+        // Apply resolution if specified
+        if (options.resolution) {
+          command = command.size(options.resolution);
+        }
+
+        // Apply frame rate if specified
+        if (options.frameRate) {
+          command = command.fps(options.frameRate);
+        }
+
+        // Execute the command
+        command
+          .output(outputPath)
+          .on('start', (commandLine) => {
+            console.log('FFmpeg concatenation command:', commandLine);
+          })
+          .on('progress', (progress) => {
+            console.log('Concatenation progress: ' + progress.percent + '% done');
+          })
+          .on('end', async () => {
+            try {
+              console.log('FFmpeg concatenation completed successfully');
+              const stats = await fs.stat(outputPath);
+              const processingTime = (Date.now() - startTime) / 1000;
+              
+              // Get duration of output file
+              const duration = await this.getVideoDuration(outputPath);
+              
+              // Cleanup temp directory
+              await fs.rm(tempDir, { recursive: true, force: true });
+              
+              console.log('Concatenation result:', {
+                outputPath,
+                duration,
+                size: stats.size,
+                processingTime,
+                segmentCount: videoPaths.length
+              });
+              
+              resolve({
+                outputPath,
+                duration,
+                size: stats.size,
+                processingTime,
+                segmentCount: videoPaths.length
+              });
+            } catch (error) {
+              console.error('Failed to get output file stats:', error);
+              reject(new Error(`Failed to get output file stats: ${error}`));
+            }
+          })
+          .on('error', async (error: any) => {
+            console.error('FFmpeg concatenation error details:', {
+              message: error.message,
+              code: error.code,
+              signal: error.signal,
+              cmd: error.cmd
+            });
+            
+            // Cleanup temp directory on error
+            try {
+              await fs.rm(tempDir, { recursive: true, force: true });
+            } catch (cleanupError) {
+              console.warn('Failed to cleanup temp directory:', cleanupError);
+            }
+            
+            reject(new Error(`FFmpeg concatenation failed: ffmpeg exited with code ${error.code || 'unknown'}: ${error.message}`));
+          })
+          .run();
+      });
+
+    } catch (error) {
+      // Cleanup temp directory on error
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup temp directory:', cleanupError);
+      }
+      throw error;
+    }
   }
 
   public async getVideoDuration(filePath: string): Promise<number> {

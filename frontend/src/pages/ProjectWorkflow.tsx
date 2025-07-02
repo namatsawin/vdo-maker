@@ -15,7 +15,7 @@ import { GenerateAllImagesButton } from '@/components/workflow/GenerateAllImages
 import { GenerateAllAudiosButton } from '@/components/workflow/GenerateAllAudiosButton';
 import { GenerateAllVideosButton } from '@/components/workflow/GenerateAllVideosButton';
 import { SegmentGenerationDialog } from '@/components/workflow/SegmentGenerationDialog';
-import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment } from '@/types';
+import { WorkflowStage, ApprovalStatus, ProjectStatus, type VideoSegment, type UpdateSegmentRequest } from '@/types';
 import type { SegmentGenerationRequest } from '@/types/shared';
 import { isApprovalStatus } from '@/utils/typeCompatibility';
 import { apiClient } from '@/lib/api';
@@ -117,7 +117,28 @@ export function ProjectWorkflow() {
 
   const handleSegmentUpdate = (segmentId: string, updates: Partial<VideoSegment>) => {
     if (!project) return;
-    return updateSegment(project.id, segmentId, updates)
+    
+    // Filter out relation fields that shouldn't be sent to the API
+    const { images, videos, audios, ...scalarUpdates } = updates;
+    
+    // Only send scalar fields that are part of UpdateSegmentRequest
+    const allowedUpdates: Partial<UpdateSegmentRequest> = {
+      script: scalarUpdates.script,
+      videoPrompt: scalarUpdates.videoPrompt,
+      result_url: scalarUpdates.result_url,
+      scriptApprovalStatus: scalarUpdates.scriptApprovalStatus,
+      imageApprovalStatus: scalarUpdates.imageApprovalStatus,
+      videoApprovalStatus: scalarUpdates.videoApprovalStatus,
+      audioApprovalStatus: scalarUpdates.audioApprovalStatus,
+      finalApprovalStatus: scalarUpdates.finalApprovalStatus,
+    };
+    
+    // Remove undefined values
+    const cleanUpdates = Object.fromEntries(
+      Object.entries(allowedUpdates).filter(([_, value]) => value !== undefined)
+    );
+    
+    return updateSegment(project.id, segmentId, cleanUpdates);
   };
 
   const getApprovalField = (currentStage: string) => {
@@ -270,6 +291,8 @@ export function ProjectWorkflow() {
         return project?.segments.filter(s => s.imageApprovalStatus === ApprovalStatus.APPROVED).length || 0;
       case 'videos':
         return project?.segments.filter(s => s.videoApprovalStatus === ApprovalStatus.APPROVED).length || 0;
+      case 'final': 
+        return project?.segments.filter(s => s.finalApprovalStatus === ApprovalStatus.APPROVED).length || 0;
       default:
         return 0;
     }
@@ -439,6 +462,7 @@ export function ProjectWorkflow() {
         <div className="space-y-4">
           {stage === 'final' ? (
             <FinalAssembly 
+              project={project}
               segments={project.segments}
               onApprove={handleApprove}
               onReject={handleReject}

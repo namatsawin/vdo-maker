@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
   BASE: `${API_BASE_URL}/api/${API_VERSION}`,
   MERGE: {
     VIDEO_AUDIO: `${API_BASE_URL}/api/${API_VERSION}/merge/video-audio`,
+    CONCATENATE_SEGMENTS: `${API_BASE_URL}/api/${API_VERSION}/merge/concatenate-segments`,
   },
   MEDIA: {
     MERGED: `${API_BASE_URL}/api/media/merged`,

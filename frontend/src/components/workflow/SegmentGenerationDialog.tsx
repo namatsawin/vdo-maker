@@ -47,6 +47,9 @@ export function SegmentGenerationDialog({
         const defaultInstruction = response.data.instructions.find((inst: SystemInstruction) => inst.isDefault);
         if (defaultInstruction) {
           setSelectedInstructionId(defaultInstruction.id);
+        } else {
+          const first = response.data.instructions[0]
+          if (first)  setSelectedInstructionId(first.id);
         }
       }
     } catch (err) {

@@ -95,7 +95,7 @@ export interface Project {
   segments: VideoSegment[];
   createdAt: string;
   updatedAt: string;
-  result_url?: string;
+  final_video_url?: string | null;
   
   // User relation
   userId: string;

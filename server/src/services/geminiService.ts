@@ -43,11 +43,11 @@ const SCRIPT_SEGMENTS_SCHEMA = {
           },
           script: {
             type: Type.STRING,
-            description: "The spoken content for this segment"
+            description: "The spoken content for this segment (Thai Only)"
           },
           videoPrompt: {
             type: Type.STRING,
-            description: "Detailed visual description for video generation"
+            description: "Detailed visual description for video generation (English Only)"
           }
         },
         required: ["order", "script", "videoPrompt"],

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { useUIStore } from '@/stores/uiStore';
 import { API_ENDPOINTS } from '@/config/api';
 import { MergeAllSegmentsButton } from './MergeAllSegmentsButton';
-import type { VideoSegment, MediaAsset } from '@/types';
+import { ConcatenateAllSegmentsButton } from './ConcatenateAllSegmentsButton';
+import type { VideoSegment, MediaAsset, Project } from '@/types';
 import { ApprovalStatus } from '@/types/approvalStatus';
 
 interface MergeOptions {
@@ -27,13 +28,14 @@ interface MergedVideo {
 }
 
 interface FinalAssemblyProps {
+  project: Project;
   segments: VideoSegment[];
   onApprove: (segmentId: string) => void;
   onReject: (segmentId: string) => void;
   onUpdate: (segmentId: string, updates: Partial<VideoSegment>) => void;
 }
 
-export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: FinalAssemblyProps) {
+export function FinalAssembly({ project, segments, onApprove, onReject, onUpdate }: FinalAssemblyProps) {
   const [mediaDurations, setMediaDurations] = useState<Record<string, number>>({});
   const [mergingSegments, setMergingSegments] = useState<Set<string>>(new Set());
   const [mergedVideos, setMergedVideos] = useState<Map<string, MergedVideo>>(new Map());
@@ -384,6 +386,15 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
       </CardHeader>
       
       <CardContent className="space-y-6">
+
+        {/* Concatenate All Segments Button */}
+          {completionStatus.approved === segments.length && 
+          <ConcatenateAllSegmentsButton 
+            project={project}
+            segments={segments}
+          />
+        }
+
         {/* Merge All Segments Button */}
         <MergeAllSegmentsButton 
           segments={segments}
@@ -574,7 +585,7 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                           <div className="bg-gray-50 rounded-lg p-3">
                             <video
                               src={selectedVideo.url}
-                              className="w-full mx-auto max-w-3xl aspect-video object-contain rounded-md mb-2"
+                              className="w-full mx-auto max-w-3xl bg-black aspect-video object-contain rounded-md mb-2"
                               controls
                               preload="metadata"
                               onLoadedMetadata={(e) => handleVideoLoadedMetadata(e.currentTarget, selectedVideo.id)}
@@ -671,7 +682,7 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                         }`}>
                           <video
                             src={getSegmentResultUrl(segment) || undefined}
-                            className="w-full mx-auto max-w-3xl aspect-video object-contain rounded-md mb-2"
+                            className="w-full mx-auto max-w-3xl aspect-video bg-black object-contain rounded-md mb-2"
                             controls
                             preload="metadata"
                           />

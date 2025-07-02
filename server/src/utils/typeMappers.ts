@@ -167,7 +167,7 @@ export const mapProject = (project: PrismaProjectWithRelations): Project => {
     userId: project.userId,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
-    
+    final_video_url: project.final_video_url
   };
 };
 
