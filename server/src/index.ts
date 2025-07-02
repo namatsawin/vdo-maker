@@ -15,6 +15,7 @@ import authRoutes from '@/routes/auth';
 import uploadRoutes from '@/routes/upload';
 import aiRoutes from '@/routes/ai';
 import projectRoutes from '@/routes/projects';
+import mergeRoutes from '@/routes/mergeRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +59,14 @@ app.use('/uploads', cors({
   exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'Content-Type']
 }), express.static(path.join(__dirname, '../uploads')));
 
+// Handle CORS for API endpoints
+app.use('/api', cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+}));
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -77,6 +86,8 @@ app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 app.use(`/api/${API_VERSION}/ai`, aiRoutes);
 app.use(`/api/${API_VERSION}/projects`, projectRoutes);
 app.use(`/api/${API_VERSION}/system-instructions`, systemInstructionRoutes);
+app.use(`/api/${API_VERSION}/merge`, mergeRoutes);
+app.use(`/api/media`, mergeRoutes);
 
 app.get(`/api/${API_VERSION}`, (req, res) => {
   res.json({
@@ -89,7 +100,8 @@ app.get(`/api/${API_VERSION}`, (req, res) => {
       projects: `/api/${API_VERSION}/projects`,
       ai: `/api/${API_VERSION}/ai`,
       upload: `/api/${API_VERSION}/upload`,
-      systemInstructions: `/api/${API_VERSION}/system-instructions`
+      systemInstructions: `/api/${API_VERSION}/system-instructions`,
+      merge: `/api/${API_VERSION}/merge`
     }
   });
 });
@@ -121,6 +133,20 @@ async function startServer() {
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
       logger.info('Created uploads directory');
+    }
+
+    // Create merged videos directory
+    const mergedDir = path.join(__dirname, '../uploads/merged');
+    if (!fs.existsSync(mergedDir)) {
+      fs.mkdirSync(mergedDir, { recursive: true });
+      logger.info('Created merged videos directory');
+    }
+
+    // Create temp directory
+    const tempDir = path.join(__dirname, '../temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+      logger.info('Created temp directory');
     }
 
     // Create logs directory

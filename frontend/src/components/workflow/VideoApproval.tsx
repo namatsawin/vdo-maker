@@ -123,7 +123,7 @@ export function VideoApproval({
         <div className="flex items-center gap-2">
           <video
             src={selectedVideo?.url}
-            className="w-16 h-10 object-cover rounded border"
+            className="w-16 h-10 object-contain rounded border"
             muted
             poster={selectedImage?.url}
           />

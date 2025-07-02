@@ -135,6 +135,7 @@ export function ProjectWorkflow() {
       case 'script': return ['scriptApprovalStatus', 'audioApprovalStatus'];
       case 'images': return ['imageApprovalStatus'];
       case 'videos': return ['videoApprovalStatus'];
+      case 'final' : return ['finalApprovalStatus']
       default: return ['scriptApprovalStatus'];
     }
   };
@@ -449,18 +450,8 @@ export function ProjectWorkflow() {
           {stage === 'final' ? (
             <FinalAssembly 
               segments={project.segments}
-              onComplete={() => {
-                updateProject(project.id, {
-                  status: ProjectStatus.COMPLETED,
-                  currentStage: WorkflowStage.COMPLETED,
-                  updatedAt: new Date().toISOString(),
-                });
-                addToast({
-                  type: 'success',
-                  title: 'Project Completed!',
-                  message: 'Your video project has been completed successfully.',
-                });
-              }}
+              onApprove={handleApprove}
+              onReject={handleReject}
             />
           ) : (
             <>

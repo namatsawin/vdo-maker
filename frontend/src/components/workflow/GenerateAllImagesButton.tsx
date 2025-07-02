@@ -75,7 +75,7 @@ export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonPro
       await Promise.all(segmentsNeedingGeneration.map(segment => {
         return generateSegmentImage(
           segment.id, 
-          segment.videoApprovalStatus,
+          segment.videoPrompt,
           aspectRatio,
           selectedModel,
           safetyFilterLevel,

@@ -1,8 +1,8 @@
 # Backend Dockerfile
 FROM node:20-alpine
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+# Install OpenSSL for Prisma and FFmpeg for video processing
+RUN apk add --no-cache openssl ffmpeg
 
 # Set working directory
 WORKDIR /app
@@ -26,7 +26,7 @@ COPY . .
 RUN npx prisma generate
 
 # Create necessary directories
-RUN mkdir -p uploads logs
+RUN mkdir -p uploads logs uploads/merged temp
 
 # Expose port
 EXPOSE 3001
