@@ -331,13 +331,6 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 Bytes';
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -399,11 +392,14 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
             const selectedVideo = getSelectedVideo(segment);
             const selectedAudio = getSelectedAudio(segment);
 
-            // Default expand first segment
+            // Check if segment has result (either from database or local merge)
+            const hasResult = hasSegmentResult(segment);
+
+            // If segment has result_url, keep it collapsed by default
             if (expandedSegments[segment.id] === undefined) {
               setExpandedSegments(prev => ({
                 ...prev,
-                [segment.id]: index === 0 // Expand first segment by default
+                [segment.id]: segment.finalApprovalStatus !== 'APPROVED'
               }));
             }
 
@@ -411,18 +407,17 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
             if (expandedVideoSections[segment.id] === undefined) {
               setExpandedVideoSections(prev => ({
                 ...prev,
-                [segment.id]: !mergedVideos.has(segment.id) // Expand if not merged
+                [segment.id]: !hasResult // Expand if no result (not merged)
               }));
             }
             
             if (expandedAudioSections[segment.id] === undefined) {
               setExpandedAudioSections(prev => ({
                 ...prev,
-                [segment.id]: !mergedVideos.has(segment.id) // Expand if not merged
+                [segment.id]: !hasResult // Expand if no result (not merged)
               }));
             }
 
-            // Default collapse script sections (user can expand if needed)
             if (expandedScriptSections[segment.id] === undefined) {
               setExpandedScriptSections(prev => ({
                 ...prev,
@@ -862,20 +857,14 @@ export function FinalAssembly({ segments, onApprove, onReject }: FinalAssemblyPr
                         variant="outline"
                         size="sm"
                         onClick={() => handleRejectSegment(segment)}
-                        disabled={!hasSegmentResult(segment)}
-                        className={`text-red-600 border-red-200 hover:bg-red-50 min-w-[100px] ${
-                          !hasSegmentResult(segment) ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className="text-red-600 border-red-200 hover:bg-red-50 min-w-[100px]"
                       >
                         {segment.finalApprovalStatus === 'REJECTED' ? 'Rejected' : 'Reject'}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => handleApproveSegment(segment)}
-                        disabled={!hasSegmentResult(segment)}
-                        className={`bg-green-500 hover:bg-green-600 text-white min-w-[100px] ${
-                          !hasSegmentResult(segment) ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className="bg-green-500 hover:bg-green-600 text-white min-w-[100px]"
                       >
                         Approve
                       </Button>
