@@ -50,7 +50,7 @@ export function ImageApproval({
   const [safetyFilterLevel, setSafetyFilterLevel] = useState<string>(SafetyFilterLevel.BLOCK_LOW_AND_ABOVE);
   const [personGeneration, setPersonGeneration] = useState<string>(PersonGeneration.ALLOW_ADULT);
 
-  const [aspectRatio, setAspectRatio] = useState<string>('16:9');
+  const [aspectRatio, setAspectRatio] = useState<string>('9:16');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);

@@ -58,7 +58,6 @@ class Imagen4Service {
     
     try {
 
-      console.log('request:', request)
       const response = await this.ai.models.generateImages({
         model: model,
         prompt: request.prompt,

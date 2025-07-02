@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/Label';
 import { ModelSelector } from '@/components/ui/ModelSelector';
 import { apiClient } from '@/lib/api';
 import { GeminiModel } from '@/types/shared';
+import { cn } from '@/lib/utils';
 
 interface VideoIdea {
   title: string;
@@ -187,7 +188,7 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                   variant="outline"
                   disabled={loading}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className={cn('h-4 w-4 mr-2', { 'animate-spin': loading })} />
                   Generate More Ideas
                 </Button>
               </div>
