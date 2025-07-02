@@ -96,19 +96,6 @@ export class FFmpegService {
           command = command.outputOptions('-shortest');
           break;
         case 'longest':
-          // For longest, we don't add -shortest, FFmpeg will use the longer duration by default
-          // and pad the shorter stream with silence/black frames
-          console.log('Using longest duration strategy (no additional options)');
-          break;
-        case 'video':
-          // Match video duration - get video duration and set that as the output duration
-          command = command.outputOptions('-map', '0:v', '-map', '1:a')
-                          .outputOptions('-c:v', 'copy'); // Copy video stream
-          break;
-        case 'audio':
-          // Match audio duration - get audio duration and set that as the output duration  
-          command = command.outputOptions('-map', '0:v', '-map', '1:a')
-                          .outputOptions('-c:a', 'copy'); // Copy audio stream
           break;
       }
 
@@ -215,7 +202,7 @@ export class FFmpegService {
             reject(new Error(`Failed to get output file stats: ${error}`));
           }
         })
-        .on('error', (error) => {
+        .on('error', (error: any) => {
           console.error('FFmpeg error details:', {
             message: error.message,
             code: error.code,

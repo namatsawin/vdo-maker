@@ -317,8 +317,6 @@ export function MergeAllSegmentsButton({
                     <SelectContent className='bg-white'>
                       <SelectItem value="shortest">Use Shortest (default)</SelectItem>
                       <SelectItem value="longest">Use Longest</SelectItem>
-                      <SelectItem value="video">Match Video Duration</SelectItem>
-                      <SelectItem value="audio">Match Audio Duration</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -447,21 +445,22 @@ export function MergeAllSegmentsButton({
               'No segments available for merging'
             )}
           </div>
-          
+
           <Button
             onClick={handleMergeAll}
             disabled={!canMerge || isMerging}
-            className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600"
+            className="flex items-center gap-2"
+            size="lg"
           >
             {isMerging ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Merging All...
+                Merging ({segmentsNeedingMerge.length}) Segments...
               </>
             ) : (
               <>
                 <Merge className="h-4 w-4" />
-                Merge All Segments
+                Merge All Segments ({segmentsNeedingMerge.length})
               </>
             )}
           </Button>

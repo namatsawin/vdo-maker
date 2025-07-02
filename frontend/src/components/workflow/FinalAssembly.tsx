@@ -362,24 +362,6 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
             <CardTitle className="flex items-center gap-2">
               Final Assembly
             </CardTitle>
-            <div className="flex items-center gap-4 text-sm">
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                {completionStatus.approved} Approved
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                {completionStatus.merged - completionStatus.approved} Merged
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                {completionStatus.rejected} Rejected
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                {completionStatus.pending} Pending
-              </span>
-            </div>
           </div>
           <div className="flex items-center gap-2">
             {completionStatus.isComplete && (
@@ -766,8 +748,6 @@ export function FinalAssembly({ segments, onApprove, onReject, onUpdate }: Final
                                 >
                                   <option value="shortest">Use Shortest (default)</option>
                                   <option value="longest">Use Longest</option>
-                                  <option value="video">Match Video Duration</option>
-                                  <option value="audio">Match Audio Duration</option>
                                 </select>
                               </div>
 
