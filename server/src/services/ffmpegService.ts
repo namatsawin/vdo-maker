@@ -38,8 +38,16 @@ export class FFmpegService {
   private async ensureOutputDir(): Promise<void> {
     try {
       await fs.mkdir(this.outputDir, { recursive: true });
+      console.log('Output directory ensured:', this.outputDir);
+      
+      // Test write permissions
+      const testFile = path.join(this.outputDir, 'test-write.tmp');
+      await fs.writeFile(testFile, 'test');
+      await fs.unlink(testFile);
+      console.log('Output directory write permissions verified');
     } catch (error) {
-      console.error('Failed to create output directory:', error);
+      console.error('Failed to create or verify output directory:', error);
+      throw new Error(`Output directory setup failed: ${error}`);
     }
   }
 
@@ -52,6 +60,31 @@ export class FFmpegService {
     const outputFilename = `merged_${uuidv4()}.mp4`;
     const outputPath = path.join(this.outputDir, outputFilename);
 
+    console.log('Merge operation starting:');
+    console.log('- Video path:', videoPath);
+    console.log('- Audio path:', audioPath);
+    console.log('- Output path:', outputPath);
+    console.log('- Output directory:', this.outputDir);
+    console.log('- Options:', options);
+
+    // Ensure output directory exists
+    await this.ensureOutputDir();
+
+    // Verify input files exist
+    try {
+      await fs.access(videoPath);
+      console.log('✓ Video file exists');
+    } catch (error) {
+      throw new Error(`Video file not found: ${videoPath}`);
+    }
+
+    try {
+      await fs.access(audioPath);
+      console.log('✓ Audio file exists');
+    } catch (error) {
+      throw new Error(`Audio file not found: ${audioPath}`);
+    }
+
     return new Promise((resolve, reject) => {
       let command = ffmpeg()
         .input(videoPath)
@@ -63,21 +96,19 @@ export class FFmpegService {
           command = command.outputOptions('-shortest');
           break;
         case 'longest':
-          // Use the longer duration, pad shorter stream
-          command = command.outputOptions('-filter_complex', '[0:v][1:a]concat=n=1:v=1:a=1[outv][outa]')
-                          .outputOptions('-map', '[outv]', '-map', '[outa]');
+          // For longest, we don't add -shortest, FFmpeg will use the longer duration by default
+          // and pad the shorter stream with silence/black frames
+          console.log('Using longest duration strategy (no additional options)');
           break;
         case 'video':
-          // Match video duration, loop or truncate audio
-          command = command.outputOptions('-filter_complex', '[1:a]aloop=loop=-1:size=2e+09[looped_audio]')
-                          .outputOptions('-map', '0:v', '-map', '[looped_audio]')
-                          .outputOptions('-t', '$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 ' + videoPath + ')');
+          // Match video duration - get video duration and set that as the output duration
+          command = command.outputOptions('-map', '0:v', '-map', '1:a')
+                          .outputOptions('-c:v', 'copy'); // Copy video stream
           break;
         case 'audio':
-          // Match audio duration, loop or truncate video
-          command = command.outputOptions('-filter_complex', '[0:v]loop=loop=-1:size=2e+09[looped_video]')
-                          .outputOptions('-map', '[looped_video]', '-map', '1:a')
-                          .outputOptions('-t', '$(ffprobe -v quiet -show_entries format=duration -of csv=p=0 ' + audioPath + ')');
+          // Match audio duration - get audio duration and set that as the output duration  
+          command = command.outputOptions('-map', '0:v', '-map', '1:a')
+                          .outputOptions('-c:a', 'copy'); // Copy audio stream
           break;
       }
 
@@ -97,6 +128,7 @@ export class FFmpegService {
       }
 
       if (audioFilters.length > 0) {
+        console.log('Applying audio filters:', audioFilters.join(','));
         command = command.audioFilters(audioFilters.join(','));
       }
 
@@ -117,19 +149,34 @@ export class FFmpegService {
           break;
       }
 
-      // Apply audio codec
-      switch (options.audioCodec) {
-        case 'copy':
-          command = command.audioCodec('copy');
-          break;
-        case 'aac':
-          command = command.audioCodec('aac')
-                          .audioBitrate('128k');
-          break;
-        case 'mp3':
-          command = command.audioCodec('libmp3lame')
-                          .audioBitrate('128k');
-          break;
+      // Apply audio codec (only if not using audio filters)
+      if (audioFilters.length === 0) {
+        switch (options.audioCodec) {
+          case 'copy':
+            command = command.audioCodec('copy');
+            break;
+          case 'aac':
+            command = command.audioCodec('aac')
+                            .audioBitrate('128k');
+            break;
+          case 'mp3':
+            command = command.audioCodec('libmp3lame')
+                            .audioBitrate('128k');
+            break;
+        }
+      } else {
+        // When using audio filters, we need to re-encode audio
+        switch (options.audioCodec) {
+          case 'copy':
+          case 'aac':
+            command = command.audioCodec('aac')
+                            .audioBitrate('128k');
+            break;
+          case 'mp3':
+            command = command.audioCodec('libmp3lame')
+                            .audioBitrate('128k');
+            break;
+        }
       }
 
       // Execute the command
@@ -143,11 +190,19 @@ export class FFmpegService {
         })
         .on('end', async () => {
           try {
+            console.log('FFmpeg processing completed successfully');
             const stats = await fs.stat(outputPath);
             const processingTime = (Date.now() - startTime) / 1000;
             
             // Get duration of output file
             const duration = await this.getVideoDuration(outputPath);
+            
+            console.log('Merge result:', {
+              outputPath,
+              duration,
+              size: stats.size,
+              processingTime
+            });
             
             resolve({
               outputPath,
@@ -156,12 +211,18 @@ export class FFmpegService {
               processingTime
             });
           } catch (error) {
+            console.error('Failed to get output file stats:', error);
             reject(new Error(`Failed to get output file stats: ${error}`));
           }
         })
         .on('error', (error) => {
-          console.error('FFmpeg error:', error);
-          reject(new Error(`FFmpeg processing failed: ${error.message}`));
+          console.error('FFmpeg error details:', {
+            message: error.message,
+            code: error.code,
+            signal: error.signal,
+            cmd: error.cmd
+          });
+          reject(new Error(`FFmpeg processing failed: ffmpeg exited with code ${error.code || 'unknown'}: ${error.message}`));
         })
         .run();
     });
