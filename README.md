@@ -59,13 +59,20 @@ Each stage includes human approval checkpoints to ensure quality control and con
 ├── docs/                    # Project documentation
 │   ├── requirements.md      # Detailed requirements
 │   ├── tasks.md            # Development tasks and progress
-│   └── video-generation-api.md # API specifications
+│   ├── video-generation-api.md # API specifications
+│   └── organized-uploads.md # Upload organization system
 ├── frontend/               # Frontend React application
 │   ├── src/               # React source code
 │   ├── public/            # Static assets
 │   └── Dockerfile         # Frontend container
 ├── server/                # Backend API server
 │   ├── src/              # Backend source code
+│   ├── uploads/          # Organized file storage
+│   │   ├── images/       # Generated and uploaded images
+│   │   ├── videos/       # Video files
+│   │   ├── audios/       # Generated audio files
+│   │   ├── others/       # Other file types
+│   │   └── merged/       # Final assembled videos
 │   ├── prisma/           # Database schema and migrations
 │   └── Dockerfile        # Backend container
 ├── docker-compose.yml     # Development environment
@@ -180,6 +187,7 @@ docker-compose up --build
 - **Real-time Updates** - WebSocket-based progress updates
 - **File Management** - Cloud storage for generated assets
 - **Background Processing** - Queue-based AI job processing
+- **Organized Uploads** ✅ - Categorized file storage system
 
 ## 🎨 UI/UX Features
 

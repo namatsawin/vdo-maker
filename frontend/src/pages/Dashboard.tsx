@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useProjectStore } from '@/stores/projectStore';
 import { ProjectStatus } from '@/types';
-import { Plus, Play, Loader2 } from 'lucide-react';
+import { Plus, Play, Loader2, TrendingUp, Clock, CheckCircle, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 export function Dashboard() {
   const { projects, isLoading, error, loadProjects } = useProjectStore();
@@ -28,10 +29,14 @@ export function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-3" />
-          <p className="text-gray-600">Loading your projects...</p>
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="text-center animate-fade-in">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full bg-blue-100 animate-ping mx-auto"></div>
+          </div>
+          <p className="text-slate-600 font-medium">Loading your projects...</p>
+          <p className="text-sm text-slate-400 mt-1">This won't take long</p>
         </div>
       </div>
     );
@@ -39,88 +44,100 @@ export function Dashboard() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-red-500 mb-4">
-            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Projects</h3>
-          <p className="text-gray-500 mb-4">{error}</p>
-          <button 
-            onClick={() => loadProjects()}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
+      <div className="flex items-center justify-center min-h-[500px]">
+        <Card className="max-w-md mx-auto border-red-200 bg-red-50/50">
+          <CardContent className="text-center py-12">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Failed to Load Projects</h3>
+            <p className="text-slate-600 mb-6 text-sm leading-relaxed">{error}</p>
+            <Button onClick={() => loadProjects()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+          <p className="text-slate-600 text-lg">
             Welcome to your AI video creation workspace
           </p>
         </div>
         <Link to="/projects/create">
-          <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="mr-2 h-4 w-4" />
+          <Button size="lg" className="shadow-lg">
+            <Plus className="mr-2 h-5 w-5" />
             Create Project
-          </button>
+          </Button>
         </Link>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="group hover:border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-sm font-medium text-slate-600">Total Projects</CardTitle>
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProjects}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold text-slate-900 mb-1">{totalProjects}</div>
+            <p className="text-sm text-slate-500">
               {totalProjects === 0 ? 'Create your first project!' : 'All your video projects'}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Draft</CardTitle>
+        <Card className="group hover:border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-sm font-medium text-slate-600">In Progress</CardTitle>
+            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+              <Clock className="h-5 w-5 text-amber-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{draftProjects}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold text-slate-900 mb-1">{draftProjects}</div>
+            <p className="text-sm text-slate-500">
               Projects in draft status
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+        <Card className="group hover:border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-sm font-medium text-slate-600">Completed</CardTitle>
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedProjects}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold text-slate-900 mb-1">{completedProjects}</div>
+            <p className="text-sm text-slate-500">
               Successfully finished
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+        <Card className="group hover:border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardTitle className="text-sm font-medium text-slate-600">Success Rate</CardTitle>
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{successRate.toFixed(0)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold text-slate-900 mb-1">{successRate.toFixed(0)}%</div>
+            <p className="text-sm text-slate-500">
               Project completion rate
             </p>
           </CardContent>
@@ -130,8 +147,8 @@ export function Dashboard() {
       {/* Recent Projects */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Projects</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl">Recent Projects</CardTitle>
+          <CardDescription className="text-base">
             {totalProjects === 0 
               ? 'No projects yet. Create your first AI video project to get started!'
               : 'Your most recently updated projects'
@@ -140,61 +157,62 @@ export function Dashboard() {
         </CardHeader>
         <CardContent>
           {totalProjects === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-4">
-                <Plus className="mx-auto h-12 w-12" />
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Plus className="h-10 w-10 text-slate-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
-              <p className="text-gray-500 mb-4">
-                Get started by creating your first AI-powered video project
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">No projects yet</h3>
+              <p className="text-slate-600 mb-8 max-w-md mx-auto leading-relaxed">
+                Get started by creating your first AI-powered video project. Our intelligent workflow will guide you through every step.
               </p>
               <Link to="/projects/create">
-                <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button size="lg">
+                  <Plus className="mr-2 h-5 w-5" />
                   Create Your First Project
-                </button>
+                </Button>
               </Link>
             </div>
           ) : (
             <div className="space-y-4">
-              {recentProjects.map((project) => (
+              {recentProjects.map((project, index) => (
                 <div
                   key={project.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-6 border border-slate-200 rounded-2xl hover:bg-slate-50/50 hover:border-slate-300 transition-all duration-200 animate-slide-up"
+                  style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="flex-1">
-                    <h3 className="font-medium">{project.name}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-slate-900 text-lg mb-1">{project.name}</h3>
+                    <p className="text-slate-600 mb-3 leading-relaxed">
                       {project.description}
                     </p>
-                    <div className="flex items-center mt-2 space-x-4 text-xs text-muted-foreground">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         project.status === ProjectStatus.COMPLETED
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-amber-100 text-amber-700'
                       }`}>
                         {project.status.replace('_', ' ').toUpperCase()}
                       </span>
-                      <span>{project.segments.length} segments</span>
-                      <span>Updated {new Date(project.updatedAt).toLocaleDateString()}</span>
+                      <span className="text-slate-500">{project.segments.length} segments</span>
+                      <span className="text-slate-500">Updated {new Date(project.updatedAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3 ml-6">
                     <Link to={`/projects/${project.id}/workflow`}>
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                      <Button variant="outline" size="icon" className="hover:bg-blue-50 hover:border-blue-200">
                         <Play className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </Link>
                   </div>
                 </div>
               ))}
               
               {projects.length > 3 && (
-                <div className="text-center pt-4">
+                <div className="text-center pt-6">
                   <Link to="/projects">
-                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    <Button variant="ghost" className="text-blue-600 hover:text-blue-700">
                       View All Projects →
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               )}

@@ -1,7 +1,8 @@
 {
-  "name": "vdo-maker",
+  "name": "ai-video-studio",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "AI-powered video generation platform with automated workflows and human approval checkpoints",
   "type": "module",
   "scripts": {
     "dev": "vite",

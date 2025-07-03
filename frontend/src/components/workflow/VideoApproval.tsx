@@ -45,7 +45,7 @@ export function VideoApproval({
   const [isGenerating, setIsGenerating] = useState(false);
   const [videoPrompt, setVideoPrompt] = useState(segment.videoPrompt || '');
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT);
-  const [selectedDuration, setSelectedDuration] = useState<number>(5);
+  const [selectedDuration, setSelectedDuration] = useState<number>(10);
   const [selectedMode, setSelectedMode] = useState<string>('std');
   const [showPromptAdvisor, setShowPromptAdvisor] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);

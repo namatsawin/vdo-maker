@@ -125,7 +125,7 @@ export function ModelSelector({
         </Button>
 
         {isOpen && (
-          <Card className="absolute top-full left-0 right-0 z-50 mt-1 shadow-lg">
+          <Card className="z-50 mt-1 shadow-lg">
             <CardContent className="p-2">
               <div className="space-y-1">
                 {models.map((model) => (

@@ -7,7 +7,7 @@ const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       className={cn(
-        'rounded-lg border bg-white text-gray-900 shadow-sm',
+        'rounded-2xl border border-slate-200/60 bg-white/80 backdrop-blur-sm shadow-soft-md hover:shadow-soft-lg transition-all duration-300 hover:-translate-y-0.5',
         className
       )}
       {...props}
@@ -20,7 +20,7 @@ const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex flex-col space-y-1.5 p-6', className)}
+      className={cn('flex flex-col space-y-2 p-8 pb-4', className)}
       {...props}
     />
   )
@@ -32,7 +32,7 @@ const CardTitle = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLHeadingEle
     <h3
       ref={ref}
       className={cn(
-        'text-2xl font-semibold leading-none tracking-tight',
+        'text-xl font-semibold leading-tight tracking-tight text-slate-900',
         className
       )}
       {...props}
@@ -45,7 +45,7 @@ const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPara
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn('text-sm text-muted-foreground', className)}
+      className={cn('text-sm text-slate-600 leading-relaxed', className)}
       {...props}
     />
   )
@@ -54,7 +54,7 @@ CardDescription.displayName = 'CardDescription';
 
 const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
+    <div ref={ref} className={cn('px-8 pb-8', className)} {...props} />
   )
 );
 CardContent.displayName = 'CardContent';
@@ -63,7 +63,7 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex items-center p-6 pt-0', className)}
+      className={cn('flex items-center px-8 pb-8', className)}
       {...props}
     />
   )

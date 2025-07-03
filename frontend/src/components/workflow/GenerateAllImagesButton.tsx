@@ -34,7 +34,7 @@ const PersonGeneration = {
 export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(GeminiImageModel.IMAGE_3);
-  const [aspectRatio, setAspectRatio] = useState<string>('16:9');
+  const [aspectRatio, setAspectRatio] = useState<string>('9:16');
   const [safetyFilterLevel, setSafetyFilterLevel] = useState<string>(SafetyFilterLevel.BLOCK_LOW_AND_ABOVE);
   const [personGeneration, setPersonGeneration] = useState<string>(PersonGeneration.ALLOW_ADULT);
   const [showSettings, setShowSettings] = useState(false);

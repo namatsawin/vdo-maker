@@ -211,11 +211,12 @@ class GeminiService {
       const randomId = Math.random().toString(36).substr(2, 9);
       const filename = `gemini-tts-${timestamp}-${randomId}.wav`;
       const uploadsDir = process.env.UPLOAD_DIR || './uploads';
-      const filePath = path.join(uploadsDir, filename);
+      const audiosDir = path.join(uploadsDir, 'audios');
+      const filePath = path.join(audiosDir, filename);
 
-      // Ensure uploads directory exists
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      // Ensure audios directory exists
+      if (!fs.existsSync(audiosDir)) {
+        fs.mkdirSync(audiosDir, { recursive: true });
       }
 
       // Convert base64 to PCM buffer and save as proper WAV file
@@ -229,7 +230,7 @@ class GeminiService {
 
       // Return the full URL that frontend can access
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
-      const audioUrl = `${backendUrl}/uploads/${filename}`;
+      const audioUrl = `${backendUrl}/uploads/audios/${filename}`;
       
       logger.info(`Gemini TTS generation completed successfully: ${audioUrl}`);
       return audioUrl;

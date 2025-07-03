@@ -22,8 +22,11 @@ RUN npx prisma generate
 # Copy the rest of the source code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p uploads logs uploads/merged temp
+# Create organized upload directory structure
+RUN mkdir -p uploads/images uploads/videos uploads/audios uploads/others uploads/merged logs temp
+
+# Set proper permissions for upload directories
+RUN chmod -R 755 uploads logs temp
 
 # Expose port
 EXPOSE 3001

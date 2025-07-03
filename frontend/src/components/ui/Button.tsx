@@ -11,22 +11,22 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', loading, children, disabled, ...props }, ref) => {
-    const baseClasses = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background';
+    const baseClasses = 'inline-flex items-center justify-center rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background active:scale-95';
     
     const variants = {
-      default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-      destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-      outline: 'border border-input hover:bg-accent hover:text-accent-foreground',
-      secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-      ghost: 'hover:bg-accent hover:text-accent-foreground',
-      link: 'underline-offset-4 hover:underline text-primary',
+      default: 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-soft-md hover:shadow-soft-lg hover:from-blue-700 hover:to-blue-800 hover:-translate-y-0.5',
+      destructive: 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-soft-md hover:shadow-soft-lg hover:from-red-600 hover:to-red-700 hover:-translate-y-0.5',
+      outline: 'border border-slate-300 bg-white/80 backdrop-blur-sm hover:bg-slate-50 hover:border-slate-400 shadow-soft hover:shadow-soft-md',
+      secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200 shadow-soft hover:shadow-soft-md',
+      ghost: 'hover:bg-slate-100 hover:text-slate-900 transition-colors',
+      link: 'underline-offset-4 hover:underline text-blue-600 hover:text-blue-700',
     };
 
     const sizes = {
-      default: 'h-10 py-2 px-4',
-      sm: 'h-9 px-3 rounded-md',
-      lg: 'h-11 px-8 rounded-md',
-      icon: 'h-10 w-10',
+      default: 'h-11 px-6 py-2',
+      sm: 'h-9 px-4 rounded-lg text-xs',
+      lg: 'h-12 px-8 rounded-xl text-base',
+      icon: 'h-11 w-11',
     };
 
     return (

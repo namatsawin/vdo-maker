@@ -217,16 +217,17 @@ export const generateImage = async (req: Request, res: Response, next: NextFunct
       const fs = require('fs');
       const path = require('path');
       
-      // Create uploads directory if it doesn't exist
+      // Create uploads/images directory if it doesn't exist
       const uploadsDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      const imagesDir = path.join(uploadsDir, 'images');
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
       }
 
       // Generate unique filename
       const timestamp = Date.now();
       const filename = `image_${segmentId}_${timestamp}.png`;
-      const filepath = path.join(uploadsDir, filename);
+      const filepath = path.join(imagesDir, filename);
       
       // Save base64 image to file
       const buffer = Buffer.from(result.imageBase64, 'base64');
@@ -234,7 +235,7 @@ export const generateImage = async (req: Request, res: Response, next: NextFunct
       
       // Create the full image URL (same pattern as audio URLs)
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
-      const imageUrl = `${backendUrl}/uploads/${filename}`;
+      const imageUrl = `${backendUrl}/uploads/images/${filename}`;
       
       // Save to database - create new image and set as selected
       const imageRecord = await prisma.$transaction(async (tx) => {
@@ -303,7 +304,7 @@ export const generateVideo = async (req: Request, res: Response, next: NextFunct
     if (!imageUrl) {
       throw createError('Image is required', 400);
     }
-
+    
     const result = await klingAIService.generateVideo({
       imageUrl,
       prompt,

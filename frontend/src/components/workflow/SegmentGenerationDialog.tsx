@@ -9,6 +9,7 @@ import type { SystemInstruction, SegmentGenerationRequest } from '@/types/shared
 import { GeminiModel } from '@/types/shared';
 import { SystemInstructionManager } from '@/components/system-instructions/SystemInstructionManager';
 import { apiClient } from '@/lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/Select';
 
 interface SegmentGenerationDialogProps {
   isOpen: boolean;
@@ -81,7 +82,7 @@ export function SegmentGenerationDialog({
     <>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center justify-between p-6">
             <div className="flex items-center gap-2">
               <Wand2 className="h-6 w-6 text-blue-600" />
               <div>
@@ -94,7 +95,7 @@ export function SegmentGenerationDialog({
             </Button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="space-y-6 p-6">
             {/* Model Selection */}
             <Card>
               <CardHeader>
@@ -161,20 +162,22 @@ export function SegmentGenerationDialog({
                         <span className="text-sm text-gray-500">Loading instructions...</span>
                       </div>
                     ) : (
-                      <select
-                        id="presetInstruction"
+                      <Select
                         value={selectedInstructionId}
-                        onChange={(e) => setSelectedInstructionId(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onValueChange={setSelectedInstructionId}
                       >
-                        <option value="">Select an instruction...</option>
-                        {instructions.map((instruction) => (
-                          <option key={instruction.id} value={instruction.id}>
-                            {instruction.name} ({instruction.category})
-                            {instruction.isDefault && ' - Default'}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className='bg-white'>
+                          {instructions.map((instruction) => (
+                            <SelectItem key={instruction.id} value={instruction.id}>
+                              {instruction.name} ({instruction.category})
+                              {instruction.isDefault && ' - Default'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     
                     {selectedInstruction && (
@@ -211,24 +214,24 @@ export function SegmentGenerationDialog({
               </CardContent>
             </Card>
 
-            {/* Generate Button */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t">
-              <Button variant="outline" onClick={onClose} disabled={loading}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleGenerate} 
-                disabled={loading || (instructionMode === 'custom' && !customInstruction.trim())}
-                className="flex items-center gap-2"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                {loading ? 'Generating...' : 'Generate Segments'}
-              </Button>
-            </div>
+          </div>
+          {/* Generate Button */}
+          <div className="sticky bottom-0 left-0 flex items-center justify-end gap-3 p-4 bg-white shadow">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleGenerate} 
+              disabled={loading || (instructionMode === 'custom' && !customInstruction.trim())}
+              className="flex items-center gap-2"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {loading ? 'Generating...' : 'Generate Segments'}
+            </Button>
           </div>
         </div>
       </div>

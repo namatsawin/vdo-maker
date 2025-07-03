@@ -50,7 +50,7 @@ app.options('/uploads/*', cors({
   exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'Content-Type']
 }));
 
-// Serve uploaded files with CORS headers
+// Serve uploaded files with CORS headers - support categorized folders
 app.use('/uploads', cors({
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true,
@@ -127,13 +127,23 @@ async function startServer() {
     // Connect to database
     await connectDatabase();
     
-    // Create uploads directory
+    // Create uploads directory structure
     const fs = require('fs');
     const uploadsDir = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
       logger.info('Created uploads directory');
     }
+
+    // Create categorized upload directories
+    const categories = ['images', 'videos', 'audios', 'others'];
+    categories.forEach(category => {
+      const categoryDir = path.join(uploadsDir, category);
+      if (!fs.existsSync(categoryDir)) {
+        fs.mkdirSync(categoryDir, { recursive: true });
+        logger.info(`Created uploads/${category} directory`);
+      }
+    });
 
     // Create merged videos directory
     const mergedDir = path.join(__dirname, '../uploads/merged');

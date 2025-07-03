@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Video, User, LogOut, ChevronDown } from 'lucide-react';
+import { LogOut, ChevronDown, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -57,26 +57,39 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b bg-white">
-        <div className="flex h-16 items-center px-6">
-          <Link to="/" className="flex items-center space-x-2">
-            <Video className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">VDO Maker</span>
+      <header className="sticky top-0 z-40 border-b border-white/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 shadow">
+        <div className="flex h-16 items-center px-8">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="relative transition-transform group-hover:scale-105">
+              <img 
+                src="/logo.svg" 
+                alt="AI Video Studio" 
+                className="h-8 w-8 drop-shadow-sm"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent">
+                AI Video Studio
+              </span>
+              <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
+            </div>
           </Link>
 
-          <div className="ml-auto flex items-center space-x-4">
-            <nav className="flex items-center space-x-6">
+          <div className="ml-auto flex items-center space-x-6">
+            <nav className="flex items-center space-x-8">
               <Link
                 to="/"
-                className="text-sm font-medium transition-colors hover:text-primary"
+                className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors relative group"
               >
                 Dashboard
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 transition-all group-hover:w-full"></span>
               </Link>
               <Link
                 to="/projects"
-                className="text-sm font-medium transition-colors hover:text-primary"
+                className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors relative group"
               >
                 Projects
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 transition-all group-hover:w-full"></span>
               </Link>
             </nav>
 
@@ -84,27 +97,32 @@ export function Header() {
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-3 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all duration-200 group"
               >
-                <User className="h-5 w-5" />
-                <span className="text-sm font-medium">{user?.name}</span>
-                <ChevronDown className="h-4 w-4" />
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <div className="text-sm font-medium text-slate-700">{user?.name}</div>
+                  <div className="text-xs text-slate-500">{user?.email}</div>
+                </div>
+                <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-hover:text-slate-600" />
               </button>
 
               {/* Dropdown Menu */}
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-50">
-                  <div className="py-1">
-                    <div className="px-4 py-2 text-sm text-gray-700 border-b [&>*]:truncate">
-                      <div className="font-medium">{user?.name}</div>
-                      <div className="text-gray-500">{user?.email}</div>
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-soft-lg border border-slate-200/60 z-50 animate-scale-in">
+                  <div className="p-2">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <div className="font-medium text-slate-900 truncate">{user?.name}</div>
+                      <div className="text-sm text-slate-500 truncate">{user?.email}</div>
                     </div>
                     
                     <button
                       onClick={handleLogoutClick}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="flex items-center w-full px-4 py-3 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 transition-colors rounded-xl mt-2"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
+                      <LogOut className="h-4 w-4 mr-3" />
                       Sign Out
                     </button>
                   </div>

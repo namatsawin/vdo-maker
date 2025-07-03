@@ -1,4 +1,4 @@
-// API Client for VDO Maker Backend
+// API Client for AI Video Studio Backend
 import type { 
   ImageGenerationRequest,
   VideoGenerationRequest

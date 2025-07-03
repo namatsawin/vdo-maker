@@ -448,7 +448,6 @@ export function ConcatenateAllSegmentsButton({
             onClick={handleConcatenateAll}
             disabled={!canConcatenate || isConcatenating}
             className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600"
-            size="lg"
           >
             {isConcatenating ? (
               <>

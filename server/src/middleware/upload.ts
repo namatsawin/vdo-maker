@@ -1,11 +1,38 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { createError } from '@/middleware/errorHandler';
+
+// Helper function to determine file category based on extension
+const getFileCategory = (filename: string): string => {
+  const ext = path.extname(filename).toLowerCase();
+  
+  const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+  const videoExts = ['.mp4', '.mov', '.avi', '.mkv'];
+  const audioExts = ['.mp3', '.wav', '.flac', '.ogg'];
+  
+  if (imageExts.includes(ext)) return 'images';
+  if (videoExts.includes(ext)) return 'videos';
+  if (audioExts.includes(ext)) return 'audios';
+  return 'others';
+};
+
+// Helper function to ensure directory exists
+const ensureDirectoryExists = (dirPath: string): void => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+};
 
 // Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
+    const category = getFileCategory(file.originalname);
+    const uploadDir = path.join(__dirname, '../../uploads', category);
+    
+    // Ensure the category directory exists
+    ensureDirectoryExists(uploadDir);
+    
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
@@ -60,4 +87,4 @@ export const handleUploadError = (error: any, req: any, res: any, next: any) => 
   next(error);
 };
 
-export { upload };
+export { upload, getFileCategory };

@@ -19,15 +19,17 @@ RUN npx prisma generate
 # Build TypeScript
 RUN npm run build
 
-# Create necessary directories
-RUN mkdir -p uploads logs
+# Create organized upload directory structure
+RUN mkdir -p uploads/images uploads/videos uploads/audios uploads/others uploads/merged logs temp
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Change ownership of app directory
+# Change ownership of app directory and set proper permissions
 RUN chown -R nodejs:nodejs /app
+RUN chmod -R 755 uploads logs temp
+
 USER nodejs
 
 # Expose port

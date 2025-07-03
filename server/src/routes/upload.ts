@@ -5,7 +5,9 @@ import {
   uploadFile, 
   uploadMultipleFiles, 
   deleteFile, 
-  getFileInfo 
+  getFileInfo,
+  getUploadStats,
+  listFilesByCategory
 } from '@/controllers/uploadController';
 
 const router = Router();
@@ -24,5 +26,11 @@ router.get('/info/:filename', getFileInfo);
 
 // Delete file
 router.delete('/:filename', deleteFile);
+
+// Get upload statistics and organization info
+router.get('/stats', getUploadStats);
+
+// List files by category
+router.get('/category/:category', listFilesByCategory);
 
 export default router;

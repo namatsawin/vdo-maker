@@ -1,5 +1,7 @@
 import { MediaStatus } from '@/types';
+import { convertImageUrlToBase64 } from '@/utils/image-util';
 import { logger } from '@/utils/logger';
+import { randomUUID } from 'crypto';
 
 export interface VideoGenerationRequest {
   imageUrl: string;
@@ -34,6 +36,17 @@ export interface VideoStatusResponse {
   };
 }
 
+export interface ImageUploadRequest {
+  fileName: string;
+  fileData: string; // base64 encoded data
+}
+
+export interface ImageUploadResponse {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
+
 class KlingAIService {
   private apiKey: string;
   private baseUrl: string;
@@ -47,31 +60,67 @@ class KlingAIService {
     }
   }
 
+  async uploadImage(request: ImageUploadRequest): Promise<ImageUploadResponse> {
+    try {
+      const payload = {
+        file_name: request.fileName,
+        file_data: request.fileData
+      };
+
+      const response = await fetch('https://upload.theapi.app/api/ephemeral_resource', {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Image upload failed: ${response.status} - ${errorText}`);
+      }
+
+      const { data } = await response.json() as any;
+      
+      return {
+        success: true,
+        url: data.url
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown upload error'
+      };
+    }
+  }
+
   async generateVideo(request: VideoGenerationRequest): Promise<VideoGenerationResponse> {
     try {
       // Check if we're in development mode and should use mock responses
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const useMockMode = isDevelopment && (!this.apiKey || process.env.USE_MOCK_PIAPI === 'true');
-      
-      if (useMockMode) {
-        logger.info('🎭 Using mock PiAPI response for development');
-        return this.generateMockVideoResponse(request);
+
+
+      const imageBase64 = await convertImageUrlToBase64(request.imageUrl)
+
+      const imageResponse = await this.uploadImage({ fileName: `${randomUUID()}-${Date.now()}.jpeg`, fileData: imageBase64 })
+
+      if (!imageResponse.url) {
+        throw Error('Failed upload image')
       }
 
       const payload = {
         model: 'kling',
         task_type: 'video_generation', // image to video
         input: {
-          version: "1.0",
-          image_url: request.imageUrl,
+          version: "2.1",
+          image_url: imageResponse.url,
           prompt: request.prompt,
           duration: request.duration,
           mode: request.mode,
           negative_prompt: request.negativePrompt
         }
       };
-
-      console.log('generateVideo data:', payload)
 
       const response = await fetch(`${this.baseUrl}/api/v1/task`, {
         method: 'POST',
@@ -80,20 +129,11 @@ class KlingAIService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        // Add timeout to prevent hanging
-        signal: AbortSignal.timeout(30000) // 30 second timeout
+        signal: AbortSignal.timeout(30000)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error(`PiAPI error: ${response.status} - ${errorText}`);
-        
-        // Fallback to mock in development if API fails
-        if (isDevelopment) {
-          logger.warn('🎭 PiAPI failed, falling back to mock response');
-          return this.generateMockVideoResponse(request);
-        }
-        
         throw Error(`Kling AI API error: ${response.status} - ${errorText}`)
       }
 
@@ -136,9 +176,8 @@ class KlingAIService {
 
       const { data } = await response.json() as any;
 
-      console.log('dassssstatusssta:', data.status)
-
       const url = data.output?.works?.[0]?.video.resource_without_watermark ?? data.output?.works?.[0]?.video.resource ?? ''
+      
       return {
         success: true,
         status: this.mapStatus(data.status),
@@ -225,28 +264,6 @@ class KlingAIService {
       logger.error('❌ Cancel task error:', error);
       return { success: false, message: 'Error cancelling task' };
     }
-  }
-
-  /**
-   * Generate mock video response for development/testing
-   */
-  private generateMockVideoResponse(request: VideoGenerationRequest): VideoGenerationResponse {
-    const taskId = `mock-task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    logger.info(`🎭 Generated mock video task: ${taskId}`);
-    logger.info(`🎬 Mock request: ${request.prompt.substring(0, 50)}...`);
-    
-    return {
-      success: true,
-      taskId: taskId,
-      status: 'pending',
-      input: {
-        prompt: request.prompt,
-        duration: request.duration || 5,
-        mode: request.mode || 'std',
-        negative_prompt: request.negativePrompt
-      }
-    };
   }
 }
 

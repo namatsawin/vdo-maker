@@ -31,7 +31,7 @@ const DEFAULT_NEGATIVE_PROMPT = 'blurry, low quality, pixelated, noisy, grainy, 
 
 export function GenerateAllVideosButton({ segments }: GenerateAllVideosButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState<number>(5);
+  const [selectedDuration, setSelectedDuration] = useState<number>(10);
   const [selectedMode, setSelectedMode] = useState<string>('std');
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT);
   const [showSettings, setShowSettings] = useState(false);

@@ -12,8 +12,8 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <div className="w-64 border-r bg-white">
-      <nav className="p-4 space-y-2">
+    <div className="w-72 border-r border-slate-200/60 bg-white/80 backdrop-blur-sm">
+      <nav className="p-6 space-y-2">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href;
           return (
@@ -21,14 +21,17 @@ export function Sidebar() {
               key={item.name}
               to={item.href}
               className={cn(
-                'flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center space-x-4 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 group',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-soft-md'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               )}
             >
-              <item.icon className="h-4 w-4" />
-              <span>{item.name}</span>
+              <item.icon className={cn(
+                'h-5 w-5 transition-transform group-hover:scale-110',
+                isActive ? 'text-white' : 'text-slate-500'
+              )} />
+              <span className="font-medium">{item.name}</span>
             </Link>
           );
         })}
