@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { geminiService, GeminiTTSModel } from '@/services/geminiService';
 import { GeminiImageModel, imagen4Service } from '@/services/imagen4Service';
 import { klingAIService } from '@/services/klingAIService';
-import { ApiResponse, ScriptGenerationRequest } from '@/types';
+import { ApiResponse, AuthenticatedRequest, ScriptGenerationRequest } from '@/types';
 import { createError } from '@/middleware/errorHandler';
 import prisma from '@/config/database';
 
@@ -496,9 +496,15 @@ export const getAvailableVoices = async (req: Request, res: Response, next: Next
   }
 };
 
-export const generateIdeas = async (req: Request, res: Response, next: NextFunction) => {
+export const generateIdeas = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { topic, model, count = 5 } = req.body;
+    const { topic, model, count = 5, existingIdeas = [] } = req.body;
+
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw createError('User not authenticated', 401);
+    }
 
     if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
       throw createError('Topic is required and must be a non-empty string', 400);
@@ -508,11 +514,15 @@ export const generateIdeas = async (req: Request, res: Response, next: NextFunct
       throw createError('Count must be between 1 and 10', 400);
     }
 
+    const projects = await prisma.project.findMany({ where: { userId }})
+
+    const existingTopics = [ ...existingIdeas, ...projects.map(item => item.title)]
+
     const ideas = await geminiService.generateVideoIdeas({
       topic: topic.trim(),
       model,
       count
-    });
+    }, existingTopics);
 
     const response: ApiResponse = {
       success: true,

@@ -39,21 +39,20 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
     setError(null);
 
     try {
+      if (topic !== tempTopic) {
+        setIdeas([])
+      }
+
       const response = await apiClient.post('/ai/generate-ideas', {
         topic: topic.trim(),
         model: selectedModel,
-        count: 5
+        count: 5,
+        existingIdeas: ideas.map(item => item.title),
       });
 
 
       if (response.success) {
-        const ideas= response.data?.ideas ?? []
-
-        if (topic === tempTopic) {
-          setIdeas((prevIdeas) => [...prevIdeas, ...ideas]);
-        } else {
-          setIdeas(ideas);
-        }
+        setIdeas(response.data?.ideas ?? []);
         setTempTopic(topic)
       } else {
         setError(response.data.error || 'Failed to generate ideas');

@@ -3,6 +3,8 @@ import { logger } from '@/utils/logger';
 import { ScriptGenerationRequest, ScriptSegment, GeminiModel } from '@/types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { IdeaSystemInstructions } from '@/constants/ai/idea-system-instruction';
+import { Project } from '@prisma/client';
 
 // JSON Schema for video ideas aligned with ProjectCreationForm
 const VIDEO_IDEAS_SCHEMA = {
@@ -307,53 +309,25 @@ class GeminiService {
     }
   }
 
-  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }): Promise<Array<{ title: string; description: string; isFactBased: boolean }>> {
+  async generateVideoIdeas(request: { topic: string; model?: GeminiModel; count?: number }, existingTopics: string[] = []): Promise<Array<{ title: string; description: string; isFactBased: boolean }>> {
     const model = request.model || GeminiModel.GEMINI_2_5_FLASH;
     const count = request.count || 5;
     
-    const prompt = `
-Generate ${count} creative video ideas for the topic: "${request.topic}"
-
-For each idea, provide:
-1. A catchy, engaging title (will be used as project name)
-2. A brief description (1-2 sentences describing the video concept)
-3. Fact verification (determine if the story content is based on verifiable facts and research)
-
-IMPORTANT: Make each idea VERY SPECIFIC and focused on particular subjects, phenomena, or cases rather than broad topics.
-
-Examples of specific ideas:
-- Instead of "mysterious ships" → "เรือแม่รี่เซเลซ: ปริศนาเรือผีที่หายไปในมหาสมุทร"
-- Instead of "simulation theory" → "เราอยู่ในโลกจำลองจริงไหม: ทฤษฎีที่นักวิทยาศาสตร์เชื่อ"
-- Instead of "strange sounds" → "เสียง Taos Hum: เสียงลึกลับที่ไม่มีใครอธิบายได้"
-- Instead of "ancient mysteries" → "พีระมิดใต้น้ำโยนากุนิ: สิ่งก่อสร้างโบราณใต้ทะเลญี่ปุ่น"
-- Instead of "space phenomena" → "สัญญาณ WOW!: ข้อความจากต่างดาวที่หายไปตลอดกาล"
-
-Focus on:
-- Specific historical events, people, or places
-- Particular scientific phenomena or discoveries
-- Individual mysteries, cases, or incidents
-- Named locations, objects, or concepts
-- Unique cultural or natural phenomena
-
-Make the ideas diverse, creative, and suitable for video content creation. Consider different angles, formats, and approaches to the topic.
-
-For fact verification (isFactBased):
-- Set to true if the story is based on documented facts, scientific research, historical events, or verifiable information
-- Set to false if the story is fictional, speculative, opinion-based, or creative interpretation
-- Consider the nature of the content: documentaries, educational content, news analysis = likely fact-based
-- Creative stories, fictional narratives, artistic interpretations = likely not fact-based
-
-Ensure each idea is unique, creative, specific, and actionable for video production.
-`;
+    const content = `{
+      "count": ${count},
+      "request.topic": ${request.topic},
+      "existingTopics": ${JSON.stringify(existingTopics)}
+    }`;
 
     logger.info(`Generating ${count} video ideas for topic: ${request.topic} using model: ${model} with structured output`);
 
     try {
       const result = await this.genAI.models.generateContent({
         model: model,
-        contents: prompt,
+        contents: content,
         config: {
           responseMimeType: "application/json",
+          systemInstruction: IdeaSystemInstructions[0].value,
           responseSchema: VIDEO_IDEAS_SCHEMA
         }
       });
