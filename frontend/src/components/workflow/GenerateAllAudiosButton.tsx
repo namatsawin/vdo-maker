@@ -33,7 +33,7 @@ const GeminiModels = {
 
 export function GenerateAllAudiosButton({ segments }: GenerateAllAudiosButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<string>(VoiceOptions.KORE);
+  const [selectedVoice, setSelectedVoice] = useState<string>(VoiceOptions.CALLIRRHOE);
   const [selectedModel, setSelectedModel] = useState<string>(GeminiModels.FLASH);
   const [showSettings, setShowSettings] = useState(false);
   

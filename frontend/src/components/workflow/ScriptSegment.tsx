@@ -32,7 +32,7 @@ export function ScriptSegment({
   const [editedScript, setEditedScript] = useState(segment.script);
   const [editedVideoPrompt, setEditedVideoPrompt] = useState(segment.videoPrompt);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('kore');
+  const [selectedVoice, setSelectedVoice] = useState('callirrhoe');
 
   const { currentProject, generateSegmentAudio, selectSegmentAudio } = useProjectStore();
   const { addToast } = useUIStore();

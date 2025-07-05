@@ -48,7 +48,7 @@ export function ImageApproval({
   const [imagePrompt, setImagePrompt] = useState(segment.videoPrompt || '');
   const [selectedModel, setSelectedModel] = useState<string>(GeminiImageModel.IMAGE_3);
   const [safetyFilterLevel, setSafetyFilterLevel] = useState<string>(SafetyFilterLevel.BLOCK_LOW_AND_ABOVE);
-  const [personGeneration, setPersonGeneration] = useState<string>(PersonGeneration.ALLOW_ADULT);
+  const [personGeneration, setPersonGeneration] = useState<string>(PersonGeneration.ALLOW_ALL);
 
   const [aspectRatio, setAspectRatio] = useState<string>('9:16');
   const [isGenerating, setIsGenerating] = useState(false);

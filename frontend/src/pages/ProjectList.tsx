@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Play, Trash2, Calendar, Clock } from 'lucide-react';
+import { Plus, Search, MoreVertical, Play, Trash2, Calendar, Clock, Eye } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { VideoPreviewDialog } from '@/components/project/VideoPreviewDialog';
 import { ProjectStatus, WorkflowStage } from '@/types';
 import type { Project } from '@/types';
 
@@ -20,6 +21,7 @@ export function ProjectList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'updated'>('updated');
+  const [previewProject, setPreviewProject] = useState<Project | null>(null);
 
   // No more mock data loading - projects come from real user creation
 
@@ -44,7 +46,7 @@ export function ProjectList() {
 
   const handleDeleteProject = (project: Project) => {
     if (window.confirm(`Are you sure you want to delete "${project.name}"?`)) {
-      deleteProject(project.id);
+      deleteProject(project.id).then(loadProjects);
       addToast({
         type: 'success',
         title: 'Project Deleted',
@@ -205,6 +207,19 @@ export function ProjectList() {
                   </div>
                   
                   <div className="flex items-center gap-2">
+                    {/* Preview button - only show if project has final video */}
+                    {project.final_video_url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPreviewProject(project)}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Preview
+                      </Button>
+                    )}
+                    
                     <Link to={`/projects/${project.id}/workflow`}>
                       <Button variant="outline" size="sm" className="flex items-center gap-1">
                         <Play className="h-4 w-4" />
@@ -227,6 +242,15 @@ export function ProjectList() {
             </Card>
           ))}
         </div>
+      )}
+      
+      {/* Video Preview Dialog */}
+      {previewProject && (
+        <VideoPreviewDialog
+          project={previewProject}
+          isOpen={!!previewProject}
+          onClose={() => setPreviewProject(null)}
+        />
       )}
     </div>
   );
