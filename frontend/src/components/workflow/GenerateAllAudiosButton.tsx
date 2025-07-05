@@ -23,6 +23,7 @@ const VoiceOptions = {
   PHAIDRA: 'phaidra',
   THALIA: 'thalia',
   ZEUS: 'zeus',
+  KORE: 'kore'
 } as const;
 
 const GeminiModels = {
@@ -32,7 +33,7 @@ const GeminiModels = {
 
 export function GenerateAllAudiosButton({ segments }: GenerateAllAudiosButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<string>(VoiceOptions.CALLIRRHOE);
+  const [selectedVoice, setSelectedVoice] = useState<string>(VoiceOptions.KORE);
   const [selectedModel, setSelectedModel] = useState<string>(GeminiModels.FLASH);
   const [showSettings, setShowSettings] = useState(false);
   
@@ -70,9 +71,13 @@ export function GenerateAllAudiosButton({ segments }: GenerateAllAudiosButtonPro
     setIsGenerating(true);
     
     try {
-      await Promise.all(segmentsNeedingGeneration.map(segment => {
-        return generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
-      }))
+      for (const segment of segmentsNeedingGeneration) {
+        await generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
+      }
+      
+      // await Promise.all(segmentsNeedingGeneration.map(segment => {
+      //   return generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
+      // }))
 
       addToast({
         type: 'success',
@@ -161,6 +166,7 @@ export function GenerateAllAudiosButton({ segments }: GenerateAllAudiosButtonPro
                     <SelectValue placeholder="Select voice" />
                   </SelectTrigger>
                   <SelectContent className='bg-white'>
+                    <SelectItem value={VoiceOptions.KORE}>Kore (Female)</SelectItem>
                     <SelectItem value={VoiceOptions.CALLIRRHOE}>Callirrhoe (Female)</SelectItem>
                     <SelectItem value={VoiceOptions.CHARON}>Charon (Male)</SelectItem>
                     <SelectItem value={VoiceOptions.HELIOS}>Helios (Male)</SelectItem>

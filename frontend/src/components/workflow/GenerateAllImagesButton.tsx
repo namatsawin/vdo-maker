@@ -72,16 +72,28 @@ export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonPro
     setIsGenerating(true);
     
     try {
-      await Promise.all(segmentsNeedingGeneration.map(segment => {
-        return generateSegmentImage(
-          segment.id, 
+
+      for (const segment of segmentsNeedingGeneration) {
+        await generateSegmentImage(
+          segment.id,
           segment.videoPrompt,
           aspectRatio,
           selectedModel,
           safetyFilterLevel,
           personGeneration
         )
-      }))
+      }
+      
+      // await Promise.all(segmentsNeedingGeneration.map(segment => {
+      //   return generateSegmentImage(
+      //     segment.id, 
+      //     segment.videoPrompt,
+      //     aspectRatio,
+      //     selectedModel,
+      //     safetyFilterLevel,
+      //     personGeneration
+      //   )
+      // }))
 
       addToast({
         type: 'success',

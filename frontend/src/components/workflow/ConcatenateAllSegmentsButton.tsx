@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/Label';
 import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { API_ENDPOINTS } from '@/config/api';
-import type { VideoSegment, Project } from '@/types';
+import { type VideoSegment, type Project, ApprovalStatus } from '@/types';
 
 interface ConcatenateOptions {
   videoCodec: 'copy' | 'h264' | 'h265';
@@ -57,7 +57,7 @@ export function ConcatenateAllSegmentsButton({
   // Calculate segments status
   const segmentsWithResults = segments.filter(segment => hasSegmentResult(segment));
   const segmentsMissingResults = segments.filter(segment => !hasSegmentResult(segment));
-  const allSegmentsApproved = segments.every(segment => segment.finalApprovalStatus === 'APPROVED');
+  const allSegmentsApproved = segments.every(segment => segment.finalApprovalStatus === ApprovalStatus.APPROVED);
   const canConcatenate = segmentsWithResults.length === segments.length && allSegmentsApproved && segments.length > 0;
 
   const updateConcatenateOption = (key: keyof ConcatenateOptions, value: string | number | boolean | undefined) => {

@@ -243,6 +243,7 @@ class GeminiService {
 
   private getGeminiVoiceName(voice: string): string {
     const voiceMap: Record<string, string> = {
+      'zephyr': 'Zephyr',
       'kore': 'Kore',
       'puck': 'Puck', 
       'charon': 'Charon',

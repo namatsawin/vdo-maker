@@ -32,7 +32,7 @@ export function ScriptSegment({
   const [editedScript, setEditedScript] = useState(segment.script);
   const [editedVideoPrompt, setEditedVideoPrompt] = useState(segment.videoPrompt);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('callirrhoe');
+  const [selectedVoice, setSelectedVoice] = useState('kore');
 
   const { currentProject, generateSegmentAudio, selectSegmentAudio } = useProjectStore();
   const { addToast } = useUIStore();
@@ -269,6 +269,7 @@ export function ScriptSegment({
                       disabled={isGeneratingAudio}
                     >
                     <option value="kore">Kore</option>
+                    <option value="zephyr">Zephyr</option>
                     <option value="puck">Puck</option>
                     <option value="charon">Charon</option>
                     <option value="fenrir">Fenrir</option>

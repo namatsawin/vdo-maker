@@ -385,16 +385,19 @@ export const getVideoStatus = async (req: Request, res: Response, next: NextFunc
 
     const result = await klingAIService.getVideoStatus(taskId)
 
-    await prisma.video.update({
-      where: { id: record.id },
-      data: { status: result.status, url: result.videoUrl }
-    })
+    if (record.status !== result.status) {
+      await prisma.video.update({
+        where: { id: record.id },
+        data: { status: result.status, url: result.videoUrl, metadata: JSON.stringify(result.metadata ?? {}) }
+      })
+    }
     
     const response: ApiResponse = {
       success: true,
       data: {
         taskId: taskId,
         status: result.status,
+        metadata: result.metadata
       }
     };
 

@@ -29,11 +29,7 @@ export interface VideoStatusResponse {
   videoUrl?: string;
   progress?: number;
   error?: string;
-  metadata?: {
-    taskId: string;
-    createdAt: string;
-    completedAt?: string;
-  };
+  metadata?: Record<string, any>
 }
 
 export interface ImageUploadRequest {
@@ -183,10 +179,12 @@ class KlingAIService {
         status: this.mapStatus(data.status),
         videoUrl: url,
         progress: data.progress || 0,
+        error: data.error.raw_message,
         metadata: {
           taskId,
           createdAt: data.created_at,
-          completedAt: data.completed_at
+          completedAt: data.completed_at,
+          error: data.error,
         }
       };
 
