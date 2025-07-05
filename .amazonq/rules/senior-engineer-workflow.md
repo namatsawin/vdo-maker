@@ -45,7 +45,7 @@ Amazon Q must behave as a senior software engineer by understanding tasks deeply
 
 ## Approval-Required Actions
 
-Amazon Q must **always ask for user confirmation** before doing any of the following:
+You must **always ask for user confirmation** before doing any of the following:
 
 - Running `git commit`
 - Running `git push`
