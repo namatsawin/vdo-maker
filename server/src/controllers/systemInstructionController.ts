@@ -157,10 +157,10 @@ export const updateSystemInstruction = async (req: AuthenticatedRequest, res: Re
       throw createError('Not authorized to update this instruction', 403);
     }
 
-    // Don't allow updating default instructions
-    if (existingInstruction.isDefault) {
-      throw createError('Cannot update default system instructions', 403);
-    }
+    // // Don't allow updating default instructions
+    // if (existingInstruction.isDefault) {
+    //   throw createError('Cannot update default system instructions', 403);
+    // }
 
     const allowedFields = ['name', 'description', 'instruction', 'category', 'isActive'];
     const filteredUpdates = Object.keys(updates)
