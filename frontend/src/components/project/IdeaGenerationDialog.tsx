@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lightbulb, Sparkles, RefreshCw, X } from 'lucide-react';
+import { Lightbulb, Sparkles, RefreshCw, X, Link, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -156,7 +156,7 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                   <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">{idea.title}</CardTitle>
+                        <CardTitle className='text-lg'>{idea.title}</CardTitle>
                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${
                           idea.isFactBased 
                             ? 'bg-green-100 text-green-800' 
@@ -169,13 +169,22 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
                     <CardContent className="pt-0">
                       <p className="text-gray-600 mb-3 font-medium">{idea.description}</p>
                       
-                      <Button
-                        onClick={() => handleSelectIdea(idea)}
-                        className="w-full"
-                        variant="outline"
-                      >
-                        Use This Idea
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleSelectIdea(idea)}
+                          className="flex-1"
+                          variant="outline"
+                        >
+                          Use This Idea
+                        </Button>
+                        <Button
+                          onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(idea.title)}`, '_blank')}
+                          variant="ghost"
+                          className="px-3 cursor-pointer"
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
