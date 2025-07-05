@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Check, X, RotateCcw, Download, Loader2, Video, BrushCleaning, Wand2, Clock, Eye, Lock } from 'lucide-react';
+import { Check, X, RotateCcw, Download, Loader2, Video, Wand2, Clock, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { PromptAdvisor } from './PromptAdvisor';
+import { ImagePreviewDialog } from '@/components/ui/ImagePreviewDialog';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useAIStore } from '@/stores/aiStore';
@@ -47,7 +47,6 @@ export function VideoApproval({
   const [negativePrompt, setNegativePrompt] = useState(DEFAULT_NEGATIVE_PROMPT);
   const [selectedDuration, setSelectedDuration] = useState<number>(10);
   const [selectedMode, setSelectedMode] = useState<string>('std');
-  const [showPromptAdvisor, setShowPromptAdvisor] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   
@@ -372,18 +371,6 @@ export function VideoApproval({
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-medium text-gray-700">Video Prompt:</Label>
-              {!isApproved && (
-                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowPromptAdvisor(true)}
-                  className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 cursor-pointer"
-                  disabled={!videoPrompt.length}
-                >
-                  <BrushCleaning className="h-4 w-4" />
-                  Sanitize Prompt
-                </Button>
-              )}
               {isApproved && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Lock className="h-3 w-3" />
@@ -668,40 +655,14 @@ export function VideoApproval({
       </CollapsibleContent>
       </Collapsible>
 
-      <PromptAdvisor
-        currentPrompt={videoPrompt}
-        onPromptUpdate={setVideoPrompt}
-        isOpen={showPromptAdvisor}
-        onClose={() => setShowPromptAdvisor(false)}
+      {/* Image Preview Dialog */}
+      <ImagePreviewDialog
+        open={showImagePreview && !!selectedImage}
+        onOpenChange={setShowImagePreview}
+        imageUrl={selectedImage?.url || ''}
+        imageAlt={`Segment ${index + 1} selected image - first frame for video generation`}
+        title={`Segment ${index + 1} Reference Image`}
       />
-
-      {/* Image Preview Modal */}
-      {showImagePreview && selectedImage && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
-            <div className="p-6">
-              <img 
-                src={selectedImage.url} 
-                alt={`Segment ${index + 1} selected image`}
-                className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
-              />
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Segment {index + 1}:</strong> This approved image will be used as the first frame 
-                  for your {selectedDuration}-second video generation.
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                 Click outside to close
-                </p>
-              </div>
-            </div>
-          </div>
-          <div 
-            className="absolute inset-0 -z-10" 
-            onClick={() => setShowImagePreview(false)}
-          />
-        </div>
-      )}
     </Card>
   );
 }

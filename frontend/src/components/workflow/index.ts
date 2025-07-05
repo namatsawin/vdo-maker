@@ -8,4 +8,3 @@ export { GenerateAllImagesButton } from './GenerateAllImagesButton';
 export { GenerateAllAudiosButton } from './GenerateAllAudiosButton';
 export { GenerateAllVideosButton } from './GenerateAllVideosButton';
 export { MergeAllSegmentsButton } from './MergeAllSegmentsButton';
-export { PromptAdvisor } from './PromptAdvisor';

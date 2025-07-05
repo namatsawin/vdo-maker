@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Check, X, ZoomIn, Download, Loader2, Sparkles, Settings, Lock, Image as ImageIcon, BrushCleaning } from 'lucide-react';
+import { Check, X, ZoomIn, Download, Loader2, Sparkles, Settings, Lock, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { PromptAdvisor } from './PromptAdvisor';
+import { ImagePreviewDialog } from '@/components/ui/ImagePreviewDialog';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import type { VideoSegment, ApprovalStatus } from '@/types';
@@ -55,7 +55,6 @@ export function ImageApproval({
   const [showPreview, setShowPreview] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [showPromptAdvisor, setShowPromptAdvisor] = useState(false);
   
   const { currentProject, loadProject, generateSegmentImage, selectSegmentImage } = useProjectStore();
   const { addToast } = useUIStore();
@@ -259,18 +258,6 @@ export function ImageApproval({
             <Label htmlFor={`image-prompt-${segment.id}`} className="text-sm font-medium text-gray-700">
               Image Prompt:
             </Label>
-            {!isApproved && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPromptAdvisor(true)}
-                className='flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50'
-                disabled={!imagePrompt.length}
-              >
-                <BrushCleaning className="h-4 w-4" />
-                Sanitize Prompt
-              </Button>
-            )}
           </div>
           <Textarea
             id={`image-prompt-${segment.id}`}
@@ -553,29 +540,14 @@ export function ImageApproval({
           </div>
         )}
 
-        {/* Image Preview Modal */}
-        {showPreview && hasImages && selectedImage && (
-          <div 
-            className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50" 
-            onClick={() => setShowPreview(false)}
-          >
-            <div className="max-w-4xl max-h-full p-4">
-              <img
-                src={selectedImage.url}
-                alt="Full size preview"
-                className="max-w-full max-h-full object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Prompt Advisor Modal */}
-        <PromptAdvisor
-          currentPrompt={imagePrompt}
-          onPromptUpdate={setImagePrompt}
-          isOpen={showPromptAdvisor}
-          onClose={() => setShowPromptAdvisor(false)}
+        {/* Image Preview Dialog */}
+        <ImagePreviewDialog
+          open={showPreview && hasImages && !!selectedImage}
+          onOpenChange={setShowPreview}
+          imageUrl={selectedImage?.url || ''}
+          imageAlt={`Full size preview of segment ${index + 1} image`}
+          title={`Segment ${index + 1} Image`}
+          onDownload={handleDownload}
         />
           </CardContent>
         </CollapsibleContent>

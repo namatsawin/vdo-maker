@@ -220,19 +220,6 @@ class ApiClient {
     });
   }
 
-  async analyzeAndReviseContent(content: string): Promise<ApiResponse<{
-    issues: string[];
-    suggestions: string[];
-    revisedPrompt: string;
-    confidence: number;
-    explanation: string;
-  }>> {
-    return this.request('/ai/prompt/analyze', {
-      method: 'POST',
-      body: JSON.stringify({ prompt: content }),
-    });
-  }
-
   // Image selection methods
   async getSegmentImages(segmentId: string): Promise<ApiResponse<{
     images: Array<{
