@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { ApprovalStatus } from '@/types';
-import * as bluebird from 'bluebird'
+// import * as bluebird from 'bluebird'
 import type { VideoSegment } from '@/types';
 
 interface GenerateAllVideosButtonProps {
@@ -76,33 +76,33 @@ export function GenerateAllVideosButton({ segments }: GenerateAllVideosButtonPro
     setIsGenerating(true);
     
     try {
-      // for (const segment of segmentsNeedingGeneration) {
-      //   const image = segment.images.find(item => item.isSelected)
-      //   if (!image?.url) continue;
+      for (const segment of segmentsNeedingGeneration) {
+        const image = segment.images.find(item => item.isSelected)
+        if (!image?.url) continue;
 
-      //   await generateSegmentVideo(
-      //     segment.id, 
-      //     image!.url, 
-      //     segment.videoPrompt, 
-      //     selectedDuration, 
-      //     negativePrompt, 
-      //     selectedMode
-      //   )
-      // }
+        await generateSegmentVideo(
+          segment.id, 
+          image!.url, 
+          segment.videoPrompt, 
+          selectedDuration, 
+          negativePrompt, 
+          selectedMode
+        )
+      }
 
-       await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
-          const image = segment.images.find(item => item.isSelected)
-          if (!image?.url) return;
+      //  await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
+      //     const image = segment.images.find(item => item.isSelected)
+      //     if (!image?.url) return;
 
-          return generateSegmentVideo(
-            segment.id,
-            image!.url, 
-            segment.videoPrompt, 
-            selectedDuration, 
-            negativePrompt, 
-            selectedMode
-          )
-        }, {  concurrency: segmentsNeedingGeneration.length / 2 })
+      //     return generateSegmentVideo(
+      //       segment.id,
+      //       image!.url, 
+      //       segment.videoPrompt, 
+      //       selectedDuration, 
+      //       negativePrompt, 
+      //       selectedMode
+      //     )
+      //   }, {  concurrency: segmentsNeedingGeneration.length / 2 })
 
       addToast({
         type: 'success',

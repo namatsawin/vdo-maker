@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/Label';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { ApprovalStatus } from '@/types';
-import * as bluebird from 'bluebird'
+// import * as bluebird from 'bluebird'
 import type { VideoSegment } from '@/types';
 
 interface GenerateAllAudiosButtonProps {
@@ -72,13 +72,13 @@ export function GenerateAllAudiosButton({ segments }: GenerateAllAudiosButtonPro
     setIsGenerating(true);
     
     try {
-      // for (const segment of segmentsNeedingGeneration) {
-      //   await generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
-      // }
+      for (const segment of segmentsNeedingGeneration) {
+        await generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
+      }
 
-      await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
-        return generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
-      }, {  concurrency: segmentsNeedingGeneration.length / 2 })
+      // await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
+      //   return generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)
+      // }, {  concurrency: segmentsNeedingGeneration.length / 2 })
       
       // await Promise.all(segmentsNeedingGeneration.map(segment => {
       //   return generateSegmentAudio(segment.id, segment.script, selectedVoice, selectedModel)

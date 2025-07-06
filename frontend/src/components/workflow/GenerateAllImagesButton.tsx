@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/Label';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
-import * as bluebird from 'bluebird'
+// import * as bluebird from 'bluebird'
 import type { VideoSegment } from '@/types';
 
 interface GenerateAllImagesButtonProps {
@@ -73,19 +73,8 @@ export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonPro
     setIsGenerating(true);
     
     try {
-      // for (const segment of segmentsNeedingGeneration) {
-      //   await generateSegmentImage(
-      //     segment.id,
-      //     segment.videoPrompt,
-      //     aspectRatio,
-      //     selectedModel,
-      //     safetyFilterLevel,
-      //     personGeneration
-      //   )
-      // }
-
-      await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
-        return generateSegmentImage(
+      for (const segment of segmentsNeedingGeneration) {
+        await generateSegmentImage(
           segment.id,
           segment.videoPrompt,
           aspectRatio,
@@ -93,7 +82,18 @@ export function GenerateAllImagesButton({ segments }: GenerateAllImagesButtonPro
           safetyFilterLevel,
           personGeneration
         )
-      }, {  concurrency: segmentsNeedingGeneration.length / 2 })
+      }
+
+      // await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
+      //   return generateSegmentImage(
+      //     segment.id,
+      //     segment.videoPrompt,
+      //     aspectRatio,
+      //     selectedModel,
+      //     safetyFilterLevel,
+      //     personGeneration
+      //   )
+      // }, {  concurrency: segmentsNeedingGeneration.length / 2 })
       
       // await Promise.all(segmentsNeedingGeneration.map(segment => {
       //   return generateSegmentImage(
