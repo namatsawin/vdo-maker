@@ -1,8 +1,9 @@
 # Backend Dockerfile
 FROM node:20-alpine
 
-# Install OpenSSL for Prisma and FFmpeg for video processing
-RUN apk add --no-cache openssl ffmpeg
+# Update package index and install OpenSSL for Prisma
+# FFmpeg installation is optional for MVP - can be added later
+RUN apk update && apk add --no-cache openssl
 
 # Set working directory
 WORKDIR /app
