@@ -67,7 +67,7 @@ export function VideoApproval({
       } else {
         return {};
       }
-    } catch (error) {
+    } catch {
       return {};
     }
   };

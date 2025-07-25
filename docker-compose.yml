@@ -42,24 +42,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - API_VERSION=v1
-      - FRONTEND_URL=http://localhost:5173
-      - BACKEND_URL=http://localhost:3001
-      - DATABASE_URL=postgresql://vdo_maker_user:vdo_maker_password@postgres:5432/vdo_maker
-      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-12345
-      - JWT_EXPIRES_IN=7d
-      - GEMINI_API_KEY=AIzaSyBxyzo9bjjDe5dDVbCZjYzJm-8nLS_6tZg
-      - GOOGLE_CLOUD_PROJECT_ID=gen-lang-client-0526096964
-      - PIAPI_API_KEY=1a5c0e39bf8082ad50e537a8c4b664fdf07ded0be244e2b53c9da21b153be4c6
-      - PIAPI_BASE_URL=https://api.piapi.ai
-      - UPLOAD_DIR=./uploads
-      - MAX_FILE_SIZE=50MB
-      - ALLOWED_FILE_TYPES=mp4,mov,avi,mp3,wav,png,jpg,jpeg
-      - RATE_LIMIT_WINDOW_MS=900000
-      - RATE_LIMIT_MAX_REQUESTS=100
+    env_file:
+      - ./server/.env
     volumes:
       - ./server:/app
       - /app/node_modules

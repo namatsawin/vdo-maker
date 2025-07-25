@@ -119,6 +119,7 @@ export function ProjectWorkflow() {
     if (!project) return;
     
     // Filter out relation fields that shouldn't be sent to the API
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { images, videos, audios, ...scalarUpdates } = updates;
     
     // Only send scalar fields that are part of UpdateSegmentRequest
