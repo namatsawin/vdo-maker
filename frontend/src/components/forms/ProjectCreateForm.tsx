@@ -51,9 +51,6 @@ export function ProjectCreateForm() {
       newErrors.name = 'Project name is required';
     }
     
-    if (!formData.description.trim()) {
-      newErrors.description = 'Project description is required';
-    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -151,18 +148,14 @@ export function ProjectCreateForm() {
 
             {/* Project Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Project Description *</Label>
+              <Label htmlFor="description">Project Description</Label>
               <Textarea
                 id="description"
                 placeholder="Brief description of your video project"
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className={errors.description ? 'border-red-500' : ''}
                 disabled={isSubmitting}
               />
-              {errors.description && (
-                <p className="text-sm text-red-600">{errors.description}</p>
-              )}
             </div>
 
             {/* Submit Button */}

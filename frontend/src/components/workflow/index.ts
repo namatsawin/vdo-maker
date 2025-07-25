@@ -1,4 +1,5 @@
 export { ScriptSegment } from './ScriptSegment';
+export { ScriptRevisionDialog } from './ScriptRevisionDialog';
 export { ImageApproval } from './ImageApproval';
 export { VideoApproval } from './VideoApproval';
 export { AudioApproval } from './AudioApproval';

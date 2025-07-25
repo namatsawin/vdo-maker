@@ -52,7 +52,7 @@ export function IdeaGenerationDialog({ isOpen, onClose, onSelectIdea }: IdeaGene
 
 
       if (response.success) {
-        setIdeas(response.data?.ideas ?? []);
+        setIdeas(prev => [...prev, ...(response.data?.ideas ?? [])]);
         setTempTopic(topic)
       } else {
         setError(response.data.error || 'Failed to generate ideas');

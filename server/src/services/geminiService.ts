@@ -540,6 +540,101 @@ class GeminiService {
       };
     }
   }
+
+  /**
+   * Revise script text to be shorter while maintaining meaning and context
+   * Based on Thai system instruction for concise spoken language
+   */
+  async reviseScriptForShorterDuration(originalScript: string, model: GeminiModel = GeminiModel.GEMINI_2_5_FLASH): Promise<{
+    revisedScript: string;
+    originalLength: number;
+    revisedLength: number;
+    estimatedTimeSaved: number;
+    confidence: number;
+  }> {
+    try {
+      if (!originalScript || originalScript.trim().length === 0) {
+        throw new Error('Original script is required');
+      }
+
+      const revisionPrompt = `กรุณาแก้ไขข้อความต่อไปนี้ให้สั้นลงและกระชับขึ้น: "${originalScript}"`;
+
+      const result = await this.genAI.models.generateContent({
+        model,
+        contents: revisionPrompt,
+        config: {
+          systemInstruction: `คุณเป็นนักเล่าเรื่องที่สามารถแก้ไขข้อความให้เป็นภาษาพูดโดยให้กระชับขึ้นนิดหน่อยโดยยังคงความหมายไว้เหมือนเดิม
+ข้อความระวัง:
+- ความหมายต้องเหมือนเดิม
+- ต้องยังคงเป็นภาษาพูดน่าและคงความน่าสนใจไว้
+- ผลลัพธ์คือข้อความต้องสั้นลงและกระชับขึ้นโดยต้องคำนวณให้ใช้ระเวลาการพูดน้อยลง 0.5 วินาที
+
+กรุณาตอบกลับในรูปแบบ JSON ที่มีโครงสร้างดังนี้:
+{
+  "revisedScript": "ข้อความที่แก้ไขแล้ว",
+  "explanation": "คำอธิบายการแก้ไข",
+  "timeSavedEstimate": "เวลาที่ประหยัดได้ (วินาที)"
+}`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              revisedScript: {
+                type: Type.STRING,
+                description: "The revised, shorter script text"
+              },
+              explanation: {
+                type: Type.STRING,
+                description: "Explanation of the changes made"
+              },
+              timeSavedEstimate: {
+                type: Type.NUMBER,
+                description: "Estimated time saved in seconds"
+              }
+            },
+            required: ["revisedScript", "explanation", "timeSavedEstimate"]
+          }
+        }
+      });
+
+      const text = result.text || '';
+      
+      if (!text) {
+        throw new Error('Empty response from Gemini API');
+      }
+
+      const revision = JSON.parse(text);
+      
+      // Calculate metrics
+      const originalLength = originalScript.length;
+      const revisedLength = revision.revisedScript.length;
+      const estimatedTimeSaved = Math.max(revision.timeSavedEstimate || 0.5, 0.1);
+      
+      // Calculate confidence based on length reduction and content preservation
+      const lengthReduction = (originalLength - revisedLength) / originalLength;
+      const confidence = Math.min(0.95, Math.max(0.6, 0.8 + (lengthReduction * 0.2)));
+
+      logger.info('Script revision completed', {
+        originalLength,
+        revisedLength,
+        lengthReduction: `${(lengthReduction * 100).toFixed(1)}%`,
+        estimatedTimeSaved: `${estimatedTimeSaved}s`,
+        confidence
+      });
+
+      return {
+        revisedScript: revision.revisedScript,
+        originalLength,
+        revisedLength,
+        estimatedTimeSaved,
+        confidence
+      };
+
+    } catch (error) {
+      logger.error('Error revising script:', error);
+      throw new Error(`Script revision failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 export const geminiService = new GeminiService();

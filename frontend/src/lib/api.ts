@@ -155,6 +155,21 @@ class ApiClient {
     });
   }
 
+  async reviseScript(originalScript: string, model?: string): Promise<ApiResponse<{
+    revisedScript: string;
+    originalLength: number;
+    revisedLength: number;
+    estimatedTimeSaved: number;
+    confidence: number;
+    processedAt: string;
+    model: string;
+  }>> {
+    return this.request('/ai/script/revise', {
+      method: 'POST',
+      body: JSON.stringify({ originalScript, model }),
+    });
+  }
+
   async generateImage(request: ImageGenerationRequest): Promise<ApiResponse<{
     success: boolean;
     imageUrl?: string;

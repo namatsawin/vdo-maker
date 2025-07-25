@@ -642,13 +642,26 @@ export function VideoApproval({
         {/* Approved State */}
         {isApproved && (
           <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-600" />
-              <span className="font-medium text-green-900">Video Approved</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-600" />
+                <div>
+                  <span className="font-medium text-green-900">Video Approved</span>
+                  <p className="text-sm text-green-700 mt-1">
+                    This video has been approved and will be used in the final assembly.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => reject(segment.id)}
+                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <X className="h-4 w-4" />
+                Revoke Approval
+              </Button>
             </div>
-            <p className="text-sm text-green-700 mt-1">
-              This video has been approved and will be used in the final assembly.
-            </p>
           </div>
         )}
       </CardContent>

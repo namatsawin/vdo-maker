@@ -54,6 +54,31 @@ export const generateScript = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const reviseScript = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { originalScript, model } = req.body;
+
+    if (!originalScript || typeof originalScript !== 'string' || originalScript.trim().length === 0) {
+      throw createError('Original script is required and must be a non-empty string', 400);
+    }
+
+    const revision = await geminiService.reviseScriptForShorterDuration(originalScript, model);
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        ...revision,
+        processedAt: new Date().toISOString(),
+        model: model || 'gemini-2.5-flash'
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getSegmentImages = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { segmentId } = req.params;

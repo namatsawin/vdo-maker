@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Edit2, Check, X, GripVertical, Volume2, Loader2, Lock } from 'lucide-react';
+import { Edit2, Check, X, GripVertical, Volume2, Loader2, Lock, Scissors } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/SimpleSelect';
 import { AudioPlayer } from '@/components/media/AudioPlayer';
+import { ScriptRevisionDialog } from './ScriptRevisionDialog';
 import type { VideoSegment, ApprovalStatus } from '@/types';
 import { isApprovalStatus, convertToLegacyApprovalStatus } from '@/utils/typeCompatibility';
 import { useProjectStore } from '@/stores/projectStore';
@@ -33,6 +34,7 @@ export function ScriptSegment({
   const [editedVideoPrompt, setEditedVideoPrompt] = useState(segment.videoPrompt);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('callirrhoe');
+  const [showRevisionDialog, setShowRevisionDialog] = useState(false);
 
   const { currentProject, generateSegmentAudio, selectSegmentAudio } = useProjectStore();
   const { addToast } = useUIStore();
@@ -121,6 +123,18 @@ export function ScriptSegment({
     }
   };
 
+  const handleRevisionAccepted = (revisedScript: string) => {
+    setEditedScript(revisedScript);
+    onUpdate(segment.id, {
+      script: revisedScript,
+    });
+    addToast({
+      type: 'success',
+      title: 'Script Updated',
+      message: 'The revised script has been applied successfully',
+    });
+  };
+
   const getStatusColor = (status: ApprovalStatus) => {
     const legacyStatus = convertToLegacyApprovalStatus(status);
     switch (legacyStatus) {
@@ -191,7 +205,19 @@ export function ScriptSegment({
         {isEditing ? (
           <>
             <div className="space-y-2">
-              <Label htmlFor={`script-${segment.id}`}>Script</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor={`script-${segment.id}`}>Script</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowRevisionDialog(true)}
+                  disabled={!editedScript.trim()}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <Scissors className="h-3 w-3" />
+                  Make Shorter
+                </Button>
+              </div>
               <Textarea
                 id={`script-${segment.id}`}
                 value={editedScript}
@@ -409,6 +435,14 @@ export function ScriptSegment({
           </>
         )}
       </CardContent>
+
+      {/* Script Revision Dialog */}
+      <ScriptRevisionDialog
+        isOpen={showRevisionDialog}
+        onClose={() => setShowRevisionDialog(false)}
+        originalScript={editedScript}
+        onRevisionAccepted={handleRevisionAccepted}
+      />
     </Card>
   );
 }

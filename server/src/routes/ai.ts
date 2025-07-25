@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateToken } from '@/middleware/auth';
 import { 
   generateScript, 
+  reviseScript,
   generateImage,
   selectImage,
   getSegmentImages,
@@ -26,8 +27,9 @@ router.use(authenticateToken);
 router.get('/models', getAvailableModels);
 router.get('/voices', getAvailableVoices);
 
-// Script generation
+// Script generation and revision
 router.post('/script/generate', generateScript);
+router.post('/script/revise', reviseScript);
 
 // Video Ideas generation
 router.post('/generate-ideas', generateIdeas);

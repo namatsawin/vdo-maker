@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Play, Volume2, Merge, Settings, Loader2, Check, ChevronDown, RotateCcw } from 'lucide-react';
+import { FileText, Play, Volume2, Merge, Settings, Loader2, Check, ChevronDown, RotateCcw, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useUIStore } from '@/stores/uiStore';
@@ -864,21 +864,43 @@ export function FinalAssembly({ project, segments, onApprove, onReject, onUpdate
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <span className="text-sm text-gray-600">Final Approval:</span>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRejectSegment(segment)}
-                        className="text-red-600 border-red-200 hover:bg-red-50 min-w-[100px]"
-                      >
-                        {segment.finalApprovalStatus === 'REJECTED' ? 'Rejected' : 'Reject'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveSegment(segment)}
-                        className="bg-green-500 hover:bg-green-600 text-white min-w-[100px]"
-                      >
-                        Approve
-                      </Button>
+                      {segment.finalApprovalStatus === 'APPROVED' ? (
+                        // Show approved state with revoke option
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                            <Check className="h-4 w-4" />
+                            <span className="text-sm font-medium">Approved</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRejectSegment(segment)}
+                            className="text-red-600 border-red-200 hover:bg-red-50 min-w-[120px]"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Revoke Approval
+                          </Button>
+                        </div>
+                      ) : (
+                        // Show approve/reject buttons for non-approved segments
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRejectSegment(segment)}
+                            className="text-red-600 border-red-200 hover:bg-red-50 min-w-[100px]"
+                          >
+                            {segment.finalApprovalStatus === 'REJECTED' ? 'Rejected' : 'Reject'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveSegment(segment)}
+                            className="bg-green-500 hover:bg-green-600 text-white min-w-[100px]"
+                          >
+                            Approve
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </CardContent>

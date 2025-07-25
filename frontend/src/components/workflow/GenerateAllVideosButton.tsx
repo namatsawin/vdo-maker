@@ -87,8 +87,22 @@ export function GenerateAllVideosButton({ segments }: GenerateAllVideosButtonPro
           selectedDuration, 
           negativePrompt, 
           selectedMode
-        )
+        ).then(() => currentProject && loadProject(currentProject.id))
       }
+
+      // await Promise.all(segmentsNeedingGeneration.map((segment) => {
+      //   const image = segment.images.find(item => item.isSelected)
+      //   if (!image?.url) return;
+
+      //   return generateSegmentVideo(
+      //     segment.id, 
+      //     image!.url, 
+      //     segment.videoPrompt, 
+      //     selectedDuration, 
+      //     negativePrompt, 
+      //     selectedMode
+      //   )
+      // }))
 
       //  await bluebird.Promise.map(segmentsNeedingGeneration, (segment) => {
       //     const image = segment.images.find(item => item.isSelected)

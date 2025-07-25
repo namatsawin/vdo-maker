@@ -85,6 +85,7 @@ class KlingAIService {
         url: data.url
       }
     } catch (error) {
+      console.log('error:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown upload error'
@@ -100,6 +101,8 @@ class KlingAIService {
       const imageBase64 = await convertImageUrlToBase64(request.imageUrl)
 
       const imageResponse = await this.uploadImage({ fileName: `${randomUUID()}-${Date.now()}.jpeg`, fileData: imageBase64 })
+
+      console.log('imageResponse:', imageResponse)
 
       if (!imageResponse.url) {
         throw Error('Failed upload image')
